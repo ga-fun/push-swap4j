@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Push_swap Debugger - Fixed Step</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; margin: 0; padding: 20px; display: flex; height: 100vh; box-sizing: border-box; overflow: hidden; }
+        .main-layout { display: flex; gap: 20px; width: 100%; height: 100%; }
+        .stacks-area { display: flex; gap: 15px; flex-grow: 1; height: calc(100vh - 40px); overflow-y: auto; padding-right: 10px; }
+        .stack-container { flex: 1; display: flex; flex-direction: column; min-width: 150px; }
+        .stack { border: 1px solid #333; flex-grow: 1; display: flex; flex-direction: column-reverse; background: #151515; border-radius: 4px; padding: 5px; box-sizing: border-box; }
+        .element { display: flex; align-items: center; margin: 1px 0; height: 18px; border-radius: 2px; position: relative; background: #222; overflow: hidden; box-sizing: border-box; width: 100%; }
+        .el-label { position: absolute; left: 5px; z-index: 5; color: white; font-size: 10px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+        .el-bar { height: 100%; transition: width 0.2s ease; z-index: 1; border-radius: 0 2px 2px 0; max-width: 100%; }
+        .sidebar { width: 320px; background: #202020; padding: 20px; border-radius: 8px; display: flex; flex-direction: column; gap: 12px; border: 1px solid #333; }
+        .setup-group { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; border-bottom: 1px solid #333; }
+        .controls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+        button { padding: 8px; cursor: pointer; background: #333; color: white; border: 1px solid #444; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        button:hover { background: #444; }
+        .op-pa, .op-pb { background: #1b5e20; }
+        .op-undo { background: #b71c1c; grid-column: span 3; margin-top: 5px; }
+        .script-section { display: flex; flex-direction: column; flex-grow: 1; gap: 8px; min-height: 0; }
+        textarea { flex-grow: 1; background: #0a0a0a; color: #40c4ff; border: 1px solid #333; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px; resize: none; }
+        .step-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .btn-play { background: #e65100; }
+        .btn-next { background: #0277bd; }
+        input { background: #111; color: #fff; border: 1px solid #444; padding: 6px; border-radius: 4px; }
+        label { font-size: 12px; color: #bbb; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+
+    <div class="main-layout">
+        <div class="stacks-area">
+            <div class="stack-container"><strong>A</strong><div id="stackA" class="stack"></div></div>
+            <div class="stack-container"><strong>B</strong><div id="stackB" class="stack"></div></div>
+        </div>
+
+        <div class="sidebar">
+            <div class="setup-group">
+                <input type="text" id="inputStack" placeholder="Ex: 4 1 5 2">
+                <div style="display: flex; gap: 5px;">
+                    <input type="number" id="randomSize" value="50" style="width: 50px;">
+                    <button onclick="initRandom()" style="flex-grow: 1; background: #0d47a1;">RANDOM</button>
+                </div>
+                <button onclick="initManual()">APPLY / RESET PILES</button>
+            </div>
+
+            <div class="controls">
+                <button onclick="buttonOp('sa')">sa</button><button onclick="buttonOp('sb')">sb</button><button onclick="buttonOp('ss')">ss</button>
+                <button class="op-pa" onclick="buttonOp('pa')">pa</button><button class="op-pb" onclick="buttonOp('pb')">pb</button><span></span>
+                <button onclick="buttonOp('ra')">ra</button><button onclick="buttonOp('rb')">rb</button><button onclick="buttonOp('rr')">rr</button>
+                <button onclick="buttonOp('rra')">rra</button><button onclick="buttonOp('rrb')">rrb</button><button onclick="buttonOp('rrr')">rrr</button>
+                <button class="op-undo" onclick="undo()">UNDO</button>
+            </div>
+
+            <div class="script-section">
+                <label>
+                    <span id="instrLabel">0 instructions</span>
+                    <span id="stepLabel" style="color:#40c4ff">Index: 0</span>
+                </label>
+                <textarea id="scriptInput" placeholder="Collez vos instructions..."></textarea>
+                
+                <div class="step-controls">
+                    <button class="btn-play" onclick="runScript()">PLAY AUTO</button>
+                    <button class="btn-next" onclick="nextStep()">NEXT STEP</button>
+                    <button onclick="resetStepCounter()" style="grid-column: span 2;">RESET SCRIPT POSITION</button>
+                </div>
+                <div id="statusMsg" style="font-size: 11px; color: #888;">Prêt</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let a = [], b = [];
+        let history = []; 
+        let initialStateString = "";
+        let maxVal = 1;
+        let currentStepIndex = 0;
+
+        function render(updateTextArea = true) {
+            const draw = (stack, id) => {
+                const div = document.getElementById(id); div.innerHTML = '';
+                stack.forEach(val => {
+                    const el = document.createElement('div');
+                    el.className = 'element';
+                    const label = document.createElement('span'); label.className = 'el-label'; label.innerText = val;
+                    const bar = document.createElement('div'); bar.className = 'el-bar';
+                    const widthPercent = maxVal !== 0 ? (Math.abs(val) / maxVal) * 100 : 0;
+                    bar.style.width = widthPercent + '%';
+                    bar.style.backgroundColor = `hsl(${200 + (widthPercent * 1.2)}, 70%, 50%)`;
+                    el.appendChild(label); el.appendChild(bar); div.appendChild(el);
+                });
+            };
+            draw(a, 'stackA'); draw(b, 'stackB');
+            
+            document.getElementById('stepLabel').innerText = `Step: ${currentStepIndex}`;
+            
+            if (updateTextArea) {
+                document.getElementById('scriptInput').value = history.join(' ');
+                document.getElementById('instrLabel').innerText = `${history.length} instructions`;
+            }
+        }
+
+        function initManual(keepHistory = false) {
+            const val = document.getElementById('inputStack').value;
+            const nums = val.trim().split(/\s+/).filter(x => x !== "").map(Number);
+            if (nums.length > 0) {
+                maxVal = Math.max(...nums.map(Math.abs));
+                a = [...nums].reverse();
+                b = [];
+                if (!keepHistory) { history = []; initialStateString = val; currentStepIndex = 0; }
+                render(!keepHistory);
+            }
+        }
+
+        function initRandom() {
+            const size = parseInt(document.getElementById('randomSize').value) || 20;
+            let arr = Array.from({length: size}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+            document.getElementById('inputStack').value = arr.join(' ');
+            initManual();
+        }
+
+        function executeOp(type, record = true) {
+            type = type.toLowerCase();
+            let success = false;
+            if (type === 'sa' && a.length > 1) { [a[a.length-1], a[a.length-2]] = [a[a.length-2], a[a.length-1]]; success = true; }
+            else if (type === 'sb' && b.length > 1) { [b[b.length-1], b[b.length-2]] = [b[b.length-2], b[b.length-1]]; success = true; }
+            else if (type === 'ss') { executeOp('sa', false); executeOp('sb', false); success = true; }
+            else if (type === 'pa' && b.length > 0) { a.push(b.pop()); success = true; }
+            else if (type === 'pb' && a.length > 0) { b.push(a.pop()); success = true; }
+            else if (type === 'ra' && a.length > 1) { a.unshift(a.pop()); success = true; }
+            else if (type === 'rb' && b.length > 1) { b.unshift(b.pop()); success = true; }
+            else if (type === 'rr') { executeOp('ra', false); executeOp('rb', false); success = true; }
+            else if (type === 'rra' && a.length > 1) { a.push(a.shift()); success = true; }
+            else if (type === 'rrb' && b.length > 1) { b.push(b.shift()); success = true; }
+            else if (type === 'rrr') { executeOp('rra', false); executeOp('rrb', false); success = true; }
+            if (success && record) history.push(type);
+            return success;
+        }
+
+        function buttonOp(type) {
+            executeOp(type, true);
+            currentStepIndex = history.length;
+            render(true);
+        }
+
+        function undo() {
+            if (history.length === 0) return;
+            history.pop();
+            const saved = [...history];
+            document.getElementById('inputStack').value = initialStateString;
+            initManual(true);
+            history = [];
+            saved.forEach(i => executeOp(i, true));
+            currentStepIndex = history.length;
+            render(true);
+        }
+
+        function resetStepCounter() {
+            initManual(true);
+            currentStepIndex = 0;
+            document.getElementById('statusMsg').innerText = "Position réinitialisée";
+            render(false);
+        }
+
+        function nextStep() {
+            const scriptStr = document.getElementById('scriptInput').value.trim();
+            const script = scriptStr ? scriptStr.split(/\s+/) : [];
+            if (currentStepIndex >= script.length) {
+                document.getElementById('statusMsg').innerText = "Fin atteinte";
+                return;
+            }
+            const instr = script[currentStepIndex];
+            if (executeOp(instr, false)) {
+                currentStepIndex++;
+                document.getElementById('statusMsg').innerText = `Action: ${instr}`;
+                render(false); // Ne pas écraser le textarea !
+            }
+        }
+
+        async function runScript() {
+            const scriptStr = document.getElementById('scriptInput').value.trim();
+            const script = scriptStr ? scriptStr.split(/\s+/) : [];
+            initManual(true);
+            currentStepIndex = 0;
+            for (let instr of script) {
+                if (executeOp(instr, false)) {
+                    currentStepIndex++;
+                    render(false);
+                    await new Promise(r => setTimeout(r, 50));
+                }
+            }
+        }
+    </script>
+</body>
+</html>
