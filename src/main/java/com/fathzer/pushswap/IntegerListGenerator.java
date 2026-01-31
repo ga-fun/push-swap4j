@@ -48,7 +48,7 @@ public class IntegerListGenerator {
      * @param array the array to normalize
      * @return a new array with normalized values
      */
-    public int[] normalize(int[] array) {
+    public static int[] normalize(int[] array) {
         if (array == null || array.length == 0) {
             return array;
         }

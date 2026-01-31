@@ -2,15 +2,20 @@ package com.fathzer.pushswap;
 
 import java.util.*;
 
-public class Turk extends PushSwapEngine{
+//FIXME Probably do not work if size = 2
+public class Turk extends PushSwapSorter {
+    private boolean debug = false;
     
     public Turk(int[] numbers) {
-        super(numbers);
+        super(IntegerListGenerator.normalize(numbers));
     }
-   
-    // ============ ALGORITHME TURK ============
-    
-    public void turkSort() {
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
+
+    @Override
+    public void sort() {
         if (isSorted()) return;
         
         // Phase 1 : Pousser tout dans B sauf 3 éléments
@@ -20,6 +25,11 @@ public class Turk extends PushSwapEngine{
         
         // Trier les 3 éléments restants dans A
         sortThree();
+        
+        if (debug) {
+            System.out.println("Phase 1: 3 elements sorted in A, others in B");
+            printStacks();
+        }
         
         // Phase 2 : Ramener les éléments de B vers A de manière optimale
         while (!stackB.isEmpty()) {
@@ -41,14 +51,12 @@ public class Turk extends PushSwapEngine{
             sa();
         } else if (top > mid && mid > bot) {
             sa();
-            rra();
         } else if (top > mid && mid < bot && top > bot) {
-            ra();
+            // Already sorted but rotated
         } else if (top < mid && mid > bot && top < bot) {
             sa();
-            ra();
         } else if (top < mid && mid > bot && top > bot) {
-            rra();
+            // Already sorted but rotated
         }
     }
     
@@ -69,6 +77,9 @@ public class Turk extends PushSwapEngine{
         
         // Exécuter les mouvements pour l'élément le moins cher
         int value = stackB.get(cheapestIndex);
+        if (debug) {
+            System.out.print("Phase 2: Push cheapest to A: " + value + " at index " + cheapestIndex+ " with cost " + cheapestCost);
+        }
         executeMove(value, cheapestIndex);
     }
     
@@ -77,7 +88,7 @@ public class Turk extends PushSwapEngine{
         int costB = Math.min(indexInB, stackB.size() - indexInB);
         
         // Trouver la position cible dans A
-        int targetIndex = findTargetPositionInA(value);
+        int targetIndex = stackA.findTargetPosition(value);
         
         // Coût pour amener la position cible en haut de A
         int costA = Math.min(targetIndex, stackA.size() - targetIndex);
@@ -86,47 +97,15 @@ public class Turk extends PushSwapEngine{
         boolean bothRotate = indexInB <= stackB.size() / 2 && targetIndex <= stackA.size() / 2;
         boolean bothReverseRotate = indexInB > stackB.size() / 2 && targetIndex > stackA.size() / 2;
         
-        if (bothRotate || bothReverseRotate) {
-            return Math.max(costA, costB);
-        }
-        
-        return costA + costB;
-    }
-    
-    private int findTargetPositionInA(int value) {
-        // Trouver où insérer 'value' dans A pour garder A trié (ordre croissant)
-        // On cherche le plus petit élément de A qui est plus grand que value
-        
-        int targetIndex = -1;
-        int closestBigger = Integer.MAX_VALUE;
-        
-        for (int i = 0; i < stackA.size(); i++) {
-            int elem = stackA.get(i);
-            if (elem > value && elem < closestBigger) {
-                closestBigger = elem;
-                targetIndex = i;
-            }
-        }
-        
-        // Si pas trouvé (value est plus grand que tout dans A),
-        // on doit le placer avant le plus petit élément de A
-        if (targetIndex == -1) {
-            int minIndex = 0;
-            int minValue = stackA.get(0);
-            for (int i = 1; i < stackA.size(); i++) {
-                if (stackA.get(i) < minValue) {
-                    minValue = stackA.get(i);
-                    minIndex = i;
-                }
-            }
-            targetIndex = minIndex;
-        }
-        
-        return targetIndex;
+        return (bothRotate || bothReverseRotate) ? Math.max(costA, costB) : costA + costB;
     }
     
     private void executeMove(int value, int indexInB) {
-        int targetIndexA = findTargetPositionInA(value);
+        int targetIndexA = stackA.findTargetPosition(value);
+
+        if (debug) {
+            System.out.println(" to A index: " + targetIndexA);
+        }
         
         // Déterminer la direction des rotations
         boolean rotateB = indexInB <= stackB.size() / 2;
@@ -176,6 +155,9 @@ public class Turk extends PushSwapEngine{
         
         // Pousser dans A
         pa();
+        if (debug) {
+            System.out.println("Stacks: " + stackA + " " + stackB);
+        }
     }
     
     private void finalRotation() {
@@ -192,10 +174,16 @@ public class Turk extends PushSwapEngine{
         
         // Rotation pour mettre le plus petit en haut
         if (minIndex <= stackA.size() / 2) {
+            if (debug) {
+                System.out.println("Final rotation: " + minIndex + " forward rotations");
+            }
             for (int i = 0; i < minIndex; i++) {
                 ra();
             }
         } else {
+            if (debug) {
+                System.out.println("Final rotation: " + (stackA.size() - minIndex) + " reverse rotations");
+            }
             int revSteps = stackA.size() - minIndex;
             for (int i = 0; i < revSteps; i++) {
                 rra();
@@ -221,35 +209,31 @@ public class Turk extends PushSwapEngine{
     // ============ MAIN POUR TESTER ============
     
     public static void main(String[] args) {
+        /*
         // Test avec l'exemple problématique de l'utilisateur
-        System.out.println("=== Test avec l'exemple : 3 4 5 2 7 9 10 6 1 8 ===");
-        int[] testNumbers = {3, 4, 5, 2, 7, 9, 10, 6, 1, 8};
+        System.out.println("=== Test avec l'exemple : 3 4 5 2 7 9 0 6 1 8 ===");
+        int[] testNumbers = {3, 4, 5, 2, 7, 9, 0, 6, 1, 8};
         Turk psTest = new Turk(testNumbers);
+        psTest.setDebug(true);
         System.out.println("Avant tri:");
         psTest.printStacks();
         
-        psTest.turkSort();
+        psTest.sort();
         
         System.out.println("\nAprès tri:");
         psTest.printStacks();
         System.out.println("Trié : " + psTest.isSorted());
-        psTest.printResult();
-        
+        psTest.printResult();*/
+
         // Test avec 500 nombres aléatoires
         System.out.println("\n\n=== Test avec 500 nombres aléatoires ===");
-        int[] numbers = new int[500];
-        List<Integer> list = new ArrayList<>();
-        for (int i = 1; i <= 500; i++) {
-            list.add(i);
-        }
-        Collections.shuffle(list);
-        for (int i = 0; i < 500; i++) {
-            numbers[i] = list.get(i);
-        }
+        int[] numbers = new IntegerListGenerator().generate(500);
         
         Turk ps = new Turk(numbers);
-        ps.turkSort();
+        ps.sort();
         System.out.println("Nombre d'opérations : " + ps.getOperations().size());
         System.out.println("Trié : " + ps.isSorted());
+
+        ps.printResult();
     }
 }

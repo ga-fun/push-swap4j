@@ -5,12 +5,12 @@ import static com.fathzer.pushswap.Operation.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PushSwapEngine {
+public abstract class PushSwapSorter {
     protected Stack stackA;
     protected Stack stackB;
     protected List<Operation> operations;
 
-    public PushSwapEngine(int[] numbers) {
+    protected PushSwapSorter(int[] numbers) {
         stackA = new Stack(numbers);
         stackB = new Stack();
         operations = new ArrayList<>();
@@ -84,12 +84,8 @@ public class PushSwapEngine {
     }
 
     public boolean isSorted() {
-        if (!stackB.isEmpty()) return false;
-        for (int i = 0; i < stackA.size() - 1; i++) {
-            if (stackA.get(i) > stackA.get(i + 1)) {
-                return false;
-            }
-        }
-        return true;
+        return stackA.isSorted() && stackB.isEmpty();
     }
+
+    public abstract void sort();
 }

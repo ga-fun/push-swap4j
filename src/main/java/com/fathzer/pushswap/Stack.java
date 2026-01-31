@@ -53,4 +53,51 @@ public class Stack {
     public String toString() {
         return list.toString();
     }
+
+    public boolean isSorted() {
+        for (int i = 0; i < size() - 1; i++) {
+            if (get(i) > get(i + 1)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Finds the target position to insert a value into the stack to keep it sorted in ascending order.
+     * <br>The method works also if the stack is rotated.
+     * <br>Calling this method on a stack that is not sorted or that contains duplicates returns an undefined result.
+     * @param value the value to insert
+     * @return the target position. Warning, if the value is greater than all values in the stack, the method returns 0, because the stack remains sorted but rotated.
+     */
+    public int findTargetPosition(int value) {
+        if (list.isEmpty()) return 0;
+        
+        int targetIndex = -1;
+        int closestBigger = Integer.MAX_VALUE;
+        
+        for (int i = 0; i < list.size(); i++) {
+            int elem = list.get(i);
+            if (elem > value && elem < closestBigger) {
+                closestBigger = elem;
+                targetIndex = i;
+            }
+        }
+        
+        // Si pas trouvé (value est plus grand que tout dans A),
+        // on doit le placer avant le plus petit élément de A
+        if (targetIndex == -1) {
+            int minIndex = 0;
+            int minValue = list.get(0);
+            for (int i = 1; i < list.size(); i++) {
+                if (list.get(i) < minValue) {
+                    minValue = list.get(i);
+                    minIndex = i;
+                }
+            }
+            targetIndex = minIndex;
+        }
+        
+        return targetIndex;
+    }
 }
