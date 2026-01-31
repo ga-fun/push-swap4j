@@ -2,110 +2,12 @@ package com.fathzer.pushswap;
 
 import java.util.*;
 
-public class Turk {
-    private List<Integer> stackA;  // Index 0 = haut de la pile
-    private List<Integer> stackB;  // Index 0 = haut de la pile
-    private List<String> operations;
+public class Turk extends PushSwapEngine{
     
     public Turk(int[] numbers) {
-        stackA = new ArrayList<>();
-        stackB = new ArrayList<>();
-        operations = new ArrayList<>();
-        
-        // Remplir la pile A - l'ordre du tableau correspond à l'ordre dans la pile
-        for (int num : numbers) {
-            stackA.add(num);
-        }
+        super(numbers);
     }
-    
-    // ============ OPÉRATIONS DE BASE ============
-    
-    private void sa() {
-        if (stackA.size() < 2) return;
-        int first = stackA.remove(0);
-        int second = stackA.remove(0);
-        stackA.add(0, first);
-        stackA.add(0, second);
-        operations.add("sa");
-    }
-    
-    private void sb() {
-        if (stackB.size() < 2) return;
-        int first = stackB.remove(0);
-        int second = stackB.remove(0);
-        stackB.add(0, first);
-        stackB.add(0, second);
-        operations.add("sb");
-    }
-    
-    private void pa() {
-        if (stackB.isEmpty()) return;
-        stackA.add(0, stackB.remove(0));
-        operations.add("pa");
-    }
-    
-    private void pb() {
-        if (stackA.isEmpty()) return;
-        stackB.add(0, stackA.remove(0));
-        operations.add("pb");
-    }
-    
-    private void ra() {
-        if (stackA.size() < 2) return;
-        int top = stackA.remove(0);
-        stackA.add(top);
-        operations.add("ra");
-    }
-    
-    private void rb() {
-        if (stackB.size() < 2) return;
-        int top = stackB.remove(0);
-        stackB.add(top);
-        operations.add("rb");
-    }
-    
-    private void rr() {
-        boolean didRa = stackA.size() >= 2;
-        boolean didRb = stackB.size() >= 2;
-        if (didRa) {
-            int top = stackA.remove(0);
-            stackA.add(top);
-        }
-        if (didRb) {
-            int top = stackB.remove(0);
-            stackB.add(top);
-        }
-        if (didRa || didRb) operations.add("rr");
-    }
-    
-    private void rra() {
-        if (stackA.size() < 2) return;
-        int bottom = stackA.remove(stackA.size() - 1);
-        stackA.add(0, bottom);
-        operations.add("rra");
-    }
-    
-    private void rrb() {
-        if (stackB.size() < 2) return;
-        int bottom = stackB.remove(stackB.size() - 1);
-        stackB.add(0, bottom);
-        operations.add("rrb");
-    }
-    
-    private void rrr() {
-        boolean didRra = stackA.size() >= 2;
-        boolean didRrb = stackB.size() >= 2;
-        if (didRra) {
-            int bottom = stackA.remove(stackA.size() - 1);
-            stackA.add(0, bottom);
-        }
-        if (didRrb) {
-            int bottom = stackB.remove(stackB.size() - 1);
-            stackB.add(0, bottom);
-        }
-        if (didRra || didRrb) operations.add("rrr");
-    }
-    
+   
     // ============ ALGORITHME TURK ============
     
     public void turkSort() {
@@ -303,23 +205,9 @@ public class Turk {
     
     // ============ UTILITAIRES ============
     
-    private boolean isSorted() {
-        if (!stackB.isEmpty()) return false;
-        for (int i = 0; i < stackA.size() - 1; i++) {
-            if (stackA.get(i) > stackA.get(i + 1)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    
-    public List<String> getOperations() {
-        return operations;
-    }
-    
     public void printResult() {
         System.out.println("Nombre d'opérations : " + operations.size());
-        for (String op : operations) {
+        for (Operation op : operations) {
             System.out.print(op + " ");
         }
         System.out.println();
@@ -363,35 +251,5 @@ public class Turk {
         ps.turkSort();
         System.out.println("Nombre d'opérations : " + ps.getOperations().size());
         System.out.println("Trié : " + ps.isSorted());
-    }
-    
-    // ============ MAIN POUR TESTER ============
-    
-    public static void mainx(String[] args) {
-        // Générer les nombres aléatoires
-        int[] numbers = new int[500];
-        List<Integer> list = new ArrayList<>();
-        for (int i = 1; i <= numbers.length; i++) {
-            list.add(i);
-        }
-        Collections.shuffle(list);
-        for (int i = 0; i < numbers.length; i++) {
-            numbers[i] = list.get(i);
-        }
-        
-        Turk ps = new Turk(numbers);
-        System.out.println("Pile A : " + ps.stackA);
-        ps.turkSort();
-        ps.printResult();
-        
-        // Vérifier que c'est trié
-        System.out.println("\nTrié : " + ps.isSorted());
-        if (!ps.isSorted()) {
-            System.out.println("Erreur : la pile n'est pas triée !");
-            System.out.println("Pile A : " + ps.stackA);
-            System.out.println("Pile B : " + ps.stackB);
-        } else {
-            System.out.println("Succès : la pile est triée en " + ps.getOperations().size() + " opérations !");
-        }
     }
 }
