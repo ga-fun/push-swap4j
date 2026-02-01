@@ -60,32 +60,43 @@ public class Turk extends PushSwapSorter {
     private void pushCheapestToA() {
         int cheapestIndex = -1;
         int cheapestCost = Integer.MAX_VALUE;
-        
+        int cheapestTargetIndex = -1;
+        int cheapestValue = 0;
+
+        boolean tied = false;
         // Parcourir tous les éléments de B
         for (int i = 0; i < stackB.size(); i++) {
             int value = stackB.get(i);
-            int cost = calculateCost(value, i);
+            int targetIndex = stackA.findTargetPosition(value);
+
+            int cost = calculateCost(i, targetIndex);
             
             if (cost < cheapestCost) {
                 cheapestCost = cost;
                 cheapestIndex = i;
+                cheapestTargetIndex = targetIndex;
+                cheapestValue = value;
+                tied = false;
+            } else if (cost == cheapestCost) {
+                tied = true;
+                if (value>cheapestValue) {
+                    cheapestIndex = i;
+                    cheapestTargetIndex = targetIndex;
+                    cheapestValue = value;
+                }
             }
         }
         
         // Exécuter les mouvements pour l'élément le moins cher
-        int value = stackB.get(cheapestIndex);
         if (debug) {
-            System.out.print("Phase 2: Push cheapest to A: " + value + " at index " + cheapestIndex+ " with cost " + cheapestCost);
+            System.out.print("Phase 2: Push cheapest to A: " + cheapestValue + " at index " + cheapestIndex+ " with cost " + cheapestCost+ " ("+tied+")");
         }
-        executeMove(value, cheapestIndex);
+        executeMove(cheapestIndex, cheapestTargetIndex);
     }
     
-    private int calculateCost(int value, int indexInB) {
+    private int calculateCost(int indexInB, int targetIndex) {
         // Coût pour amener l'élément en haut de B
         int costB = Math.min(indexInB, stackB.size() - indexInB);
-        
-        // Trouver la position cible dans A
-        int targetIndex = stackA.findTargetPosition(value);
         
         // Coût pour amener la position cible en haut de A
         int costA = Math.min(targetIndex, stackA.size() - targetIndex);
@@ -97,9 +108,7 @@ public class Turk extends PushSwapSorter {
         return (bothRotate || bothReverseRotate) ? Math.max(costA, costB) : costA + costB;
     }
     
-    private void executeMove(int value, int indexInB) {
-        int targetIndexA = stackA.findTargetPosition(value);
-
+    private void executeMove(int indexInB,int targetIndexA) {
         if (debug) {
             System.out.println(" to A index: " + targetIndexA);
         }
@@ -153,7 +162,7 @@ public class Turk extends PushSwapSorter {
         // Pousser dans A
         pa();
         if (debug) {
-            System.out.println("Stacks: " + stackA + " " + stackB);
+//            System.out.println("Stacks: " + stackA + " " + stackB);
         }
     }
     
@@ -225,10 +234,11 @@ public class Turk extends PushSwapSorter {
         int[] numbers = new IntegerListGenerator().generate(500);
         
         Turk ps = new Turk(numbers);
+        ps.setDebug(true);
         ps.sort();
         System.out.println("Nombre d'opérations : " + ps.getOperations().size());
         System.out.println("Trié : " + ps.isSorted());
 
-        ps.printResult();
+//        ps.printResult();
     }
 }

@@ -103,6 +103,14 @@ public abstract class PushSwapSorter {
         }
     }
 
+    public Stack getAStack() {
+        return stackA;
+    }
+
+    public Stack getBStack() {
+        return stackB;
+    }
+
     public List<Operation> getOperations() {
         return operations;
     }
