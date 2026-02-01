@@ -1,8 +1,5 @@
 package com.fathzer.pushswap;
 
-import java.util.*;
-
-//FIXME Probably do not work if size = 2
 public class Turk extends PushSwapSorter {
     private boolean debug = false;
     
@@ -161,15 +158,13 @@ public class Turk extends PushSwapSorter {
     }
     
     private void finalRotation() {
-        // Trouver l'index du plus petit élément
+        // Trouver l'index du plus petit élément, qui vaut toujours 0 car la liste est normalisée
         int minIndex = 0;
-        int minValue = stackA.get(0);
-        
-        for (int i = 1; i < stackA.size(); i++) {
-            if (stackA.get(i) < minValue) {
-                minValue = stackA.get(i);
-                minIndex = i;
+        for (Integer value : stackA) {
+            if (value ==0) {
+                break;
             }
+            minIndex++;
         }
         
         // Rotation pour mettre le plus petit en haut

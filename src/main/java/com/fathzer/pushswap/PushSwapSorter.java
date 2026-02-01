@@ -2,7 +2,7 @@ package com.fathzer.pushswap;
 
 import static com.fathzer.pushswap.Operation.*;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public abstract class PushSwapSorter {
@@ -13,7 +13,7 @@ public abstract class PushSwapSorter {
     protected PushSwapSorter(int[] numbers) {
         stackA = new Stack(numbers);
         stackB = new Stack();
-        operations = new ArrayList<>();
+        operations = new LinkedList<>();
     }
 
     public void sa() {
@@ -77,6 +77,30 @@ public abstract class PushSwapSorter {
         stackA.rotateBackward();
         stackB.rotateBackward();
         operations.add(RRR);
+    }
+
+    public void makeMove(Operation op) {
+        if (op == PA) {
+            this.pa();
+        } else if (op == PB) {
+            this.pb();
+        } else if (op == SA) {
+            this.sa();
+        } else if (op == SB) {
+            this.sb();
+        } else if (op == RA) {
+            this.ra();
+        } else if (op == RB) {
+            this.rb();
+        } else if (op == RR) {
+            this.rr();
+        } else if (op == RRA) {
+            this.rra();
+        } else if (op == RRB) {
+            this.rrb();
+        } else if (op == RRR) {
+            this.rrr();
+        }
     }
 
     public List<Operation> getOperations() {

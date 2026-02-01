@@ -1,9 +1,10 @@
 package com.fathzer.pushswap;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
-public class Stack {
+public class Stack implements Iterable<Integer> {
     private List<Integer> list;  // Index 0 = haut de la pile
 
     public Stack() {
@@ -11,7 +12,7 @@ public class Stack {
     }
 
     public Stack(int[] elements) {
-        this.list = new ArrayList<>();
+        this.list = new ArrayList<>(elements.length);
         for (int num : elements) {
             this.list.add(num);
         }
@@ -71,33 +72,25 @@ public class Stack {
      * @return the target position. Warning, if the value is greater than all values in the stack, the method returns 0, because the stack remains sorted but rotated.
      */
     public int findTargetPosition(int value) {
-        if (list.isEmpty()) return 0;
+        //TODO could probably be optimized with binary search, but be aware of the rotated list case
+        if (list.size() < 2) return 0;
         
-        int targetIndex = -1;
-        int closestBigger = Integer.MAX_VALUE;
-        
-        for (int i = 0; i < list.size(); i++) {
+        int previous = list.get(0);
+        for (int i = 1; i < list.size(); i++) {
             int elem = list.get(i);
-            if (elem > value && elem < closestBigger) {
-                closestBigger = elem;
-                targetIndex = i;
+            if ((previous < value && elem > value) || (previous > elem && (value > previous || value < elem))) {
+                // Found consecutive elements that are smaller and greater than the value => Insert here
+                // or min and max elements and the value is smaller than min or greater than max => Insert here
+                return i;
             }
+            previous = elem;
         }
-        
-        // Si pas trouvé (value est plus grand que tout dans A),
-        // on doit le placer avant le plus petit élément de A
-        if (targetIndex == -1) {
-            int minIndex = 0;
-            int minValue = list.get(0);
-            for (int i = 1; i < list.size(); i++) {
-                if (list.get(i) < minValue) {
-                    minValue = list.get(i);
-                    minIndex = i;
-                }
-            }
-            targetIndex = minIndex;
-        }
-        
-        return targetIndex;
+        // smallest value was not detected => smaller or greater than all values in a non rotated stack => insert at first position
+        return 0;
+    }
+
+    @Override
+    public Iterator<Integer> iterator() {
+        return list.iterator();
     }
 }

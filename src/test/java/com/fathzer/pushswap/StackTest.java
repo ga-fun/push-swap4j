@@ -156,7 +156,7 @@ class StackTest {
         assertEquals(0, sortedStack.findTargetPosition(0), "0 should go before 1");
         assertEquals(1, sortedStack.findTargetPosition(2), "2 should go before 3");
         assertEquals(2, sortedStack.findTargetPosition(4), "4 should go before 5");
-        assertEquals(0, sortedStack.findTargetPosition(5), "5 should go before 1 (largest)");
+        assertEquals(0, sortedStack.findTargetPosition(6), "6 should go before 1 (largest)");
     }
     
     @Test
@@ -175,7 +175,7 @@ class StackTest {
         Stack singleStack = new Stack(new int[]{5});
         
         assertEquals(0, singleStack.findTargetPosition(3), "3 should go before 5");
-        assertEquals(0, singleStack.findTargetPosition(5), "5 should go before 5");
+        assertEquals(0, singleStack.findTargetPosition(4), "4 should go before 5");
         assertEquals(0, singleStack.findTargetPosition(7), "7 should go before 5");
     }
     
