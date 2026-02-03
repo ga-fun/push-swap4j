@@ -2,7 +2,8 @@ Examples:
 
 5 7 10 8 1 9 6 4 2 3
 pb ra ra ra pb ra ra pb pb pb ra pb ra pa sa ra ra rrb pa rrb rrb pa rb pa pa pa (26)
-
+rr rr rr pb ra pb pb pb rrr rrr pa pa rrr pa rra pa rra rra rra (19 - LIS + handmade)
+rr rr rr pb rr pb pb pb rrr rra pa rrb ra pa rb rra rra pa rra pa rra rra rra (23 - Circular LIS)
 
 3 4 5 2 7 9 10 6 1 8
 pb pb pb pb ra ra ra ra pb rra pb sa pa rb rb pa pa pa rb pa pa (21)
@@ -10,3 +11,10 @@ pb pb pb pb ra ra ra ra pb rra pb sa pa rb rb pa pa pa rb pa pa (21)
 
 3 4 5 2 7 9 10 6 1 8
 pb pb pb pb rb rra rra pb sa rb rra pa pa pa pa pa (16)
+
+6 11 1 2 16 13 5 4 10 14 12 18 3 0 15 9 17 7 8 19
+pb pb rr rr pb pb rr pb rr rr pb pb pb pb rr pb rr pb pb rb rb rb pa rra rra rra pa pa rra pa rrr pa rr pa rr rr ra pa pa pa ra ra ra ra ra ra pa ra ra ra pa ra ra ra ra pa [56]
+
+
+
+

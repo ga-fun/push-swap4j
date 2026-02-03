@@ -1,5 +1,6 @@
 package com.fathzer.pushswap;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -11,8 +12,17 @@ import java.util.stream.IntStream;
 public class Tester implements AutoCloseable {
     public static void main(String[] args) {
         try (Tester tester = new Tester(8)) {
-            doTest(tester, Turk::new, 100, 10000);
-            doTest(tester, Turk::new, 500, 5000);
+            Function<int[], PushSwapSorter> sorterBuilder = LisTurk::new;
+            // tester.debugTest(sorterBuilder, 10);
+
+            doTest(tester, sorterBuilder, 100, 10000);
+            // doTest(tester, sorterBuilder, 200, 5000);
+            // doTest(tester, sorterBuilder, 300, 5000);
+            // doTest(tester, sorterBuilder, 400, 5000);
+            long startTime = System.currentTimeMillis();
+            doTest(tester, sorterBuilder, 500, 5000);
+            long endTime = System.currentTimeMillis();
+            System.out.println("Time taken: " + (endTime - startTime) + " ms");
             System.out.println("Done");
         }
     }
@@ -28,6 +38,20 @@ public class Tester implements AutoCloseable {
     public Tester(int nbThreads) {
         this.generator = new IntegerListGenerator();
         this.executor = Executors.newFixedThreadPool(nbThreads);
+    }
+
+    private void debugTest(Function<int[], PushSwapSorter> sorterBuilder, int size) {
+        int[] numbers = IntegerListGenerator.normalize(generator.generate(size));
+        System.out.println("Basic test with " + size + " elements: " + Arrays.toString(numbers));
+        PushSwapSorter sorter = sorterBuilder.apply(numbers);
+        ((Turk)sorter).setDebug(true);
+        sorter.sort();
+        System.out.println("Result: "+sorter.getOperations().size()+" ("+sorter.getOperations()+")");
+        Checker checker = new Checker(numbers, sorter.getOperations());
+        checker.sort();
+        if (!checker.isSorted()) {
+            throw new IllegalStateException("Checker failed on " + List.of(numbers));
+        }
     }
 
     public int testLoop(Function<int[], PushSwapSorter> sorterBuilder, int size, int nbLoops) {

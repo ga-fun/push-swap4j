@@ -11,23 +11,20 @@ public class Turk extends PushSwapSorter {
         this.debug = debug;
     }
 
+    protected boolean isDebug() {
+        return debug;
+    }
+
     @Override
     public void sort() {
         if (isSorted()) return;
-        
-        // Phase 1 : Pousser tout dans B sauf 3 éléments
-        while (stackA.size() > 3) {
-            pb();
-        }
-        
-        // Trier les 3 éléments restants dans A
-        sortThree();
-        
+
+        pushToB();
         if (debug) {
-            System.out.println("Phase 1: 3 elements sorted in A, others in B");
+            System.out.println("End of phase 1:");
             printStacks();
         }
-        
+
         // Phase 2 : Ramener les éléments de B vers A de manière optimale
         while (!stackB.isEmpty()) {
             pushCheapestToA();
@@ -36,8 +33,14 @@ public class Turk extends PushSwapSorter {
         // Rotation finale pour avoir le plus petit en haut
         finalRotation();
     }
-    
-    private void sortThree() {
+
+    protected void pushToB() {
+        // Phase 1 : Pousser tout dans B sauf 3 éléments
+        while (stackA.size() > 3) {
+            pb();
+        }
+        
+        // Trier les 3 éléments restants dans A
         if (stackA.size() != 3) return;
         
         int top = stackA.get(0);

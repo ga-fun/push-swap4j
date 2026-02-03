@@ -93,4 +93,8 @@ public class Stack implements Iterable<Integer> {
     public Iterator<Integer> iterator() {
         return list.iterator();
     }
+
+    public int[] toArray() {
+        return list.stream().mapToInt(Integer::intValue).toArray();
+    }
 }
