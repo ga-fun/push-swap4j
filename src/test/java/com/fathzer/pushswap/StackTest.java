@@ -3,7 +3,7 @@ package com.fathzer.pushswap;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.NoSuchElementException;
+import java.util.stream.StreamSupport;
 
 class StackTest {
     
@@ -51,7 +51,7 @@ class StackTest {
     @Test
     void testPop() {
         Stack stack = new Stack();
-        assertThrows(NoSuchElementException.class, stack::pop, "Should throw exception when popping from empty stack");
+        assertThrows(RuntimeException.class, stack::pop, "Should throw exception when popping from empty stack");
 
         stack.push(5);
         stack.push(3);
@@ -60,6 +60,7 @@ class StackTest {
         assertEquals(8, stack.pop(), "Should pop 8");
         assertEquals(2, stack.size(), "Stack should have size 2");
         assertEquals(3, stack.get(0), "New top should be 3");
+        assertEquals(5, stack.get(1), "Second element should be 5");
         
         assertEquals(3, stack.pop(), "Should pop 3");
         assertEquals(1, stack.size(), "Stack should have size 1");
@@ -67,6 +68,19 @@ class StackTest {
         
         assertEquals(5, stack.pop(), "Should pop 5");
         assertTrue(stack.isEmpty(), "Stack should be empty");
+        assertThrows(RuntimeException.class, stack::pop, "Should throw exception when popping from empty stack");
+
+        // Try on rotated stack
+        Stack rotatedStack = new Stack(new int[]{8, 3, 5});
+        rotatedStack.rotateForward();
+        assertEquals(3, rotatedStack.pop(), "Should pop 3");
+        assertEquals(5, rotatedStack.get(0), "New top should be 5");
+        assertEquals(8, rotatedStack.get(1), "Second element should be 8");
+        assertEquals(5, rotatedStack.pop(), "Should pop 5");
+        assertEquals(8, rotatedStack.get(0), "New top should be 8");
+        assertEquals(8, rotatedStack.pop(), "Should pop 8");
+        assertTrue(rotatedStack.isEmpty(), "Stack should be empty");
+        assertThrows(RuntimeException.class, stack::pop, "Should throw exception when popping from empty stack");
     }
     
     @Test
@@ -119,13 +133,15 @@ class StackTest {
 
         stack.push(2);
         stack.push(1);
+        stack.push(0);
         
-        // Check [1, 2, 3] -> [2, 3, 1]
+        // Check [0, 1, 2, 3] -> [1, 2, 3, 0]
         stack.rotateForward();
-        assertEquals(3, stack.size(), "Size should remain unchanged");
-        assertEquals(2, stack.get(0), "First element should be 2");
-        assertEquals(3, stack.get(1), "Second element should be 1");
-        assertEquals(1, stack.get(2), "Third element should be 3");
+        assertEquals(4, stack.size(), "Size should remain unchanged");
+        assertEquals(1, stack.get(0), "First element should be 1");
+        assertEquals(2, stack.get(1), "Second element should be 2");
+        assertEquals(3, stack.get(2), "Third element should be 3");
+        assertEquals(0, stack.get(3), "Fourth element should be 0");
     }
     
     @Test
@@ -139,13 +155,15 @@ class StackTest {
 
         stack.push(2);
         stack.push(1);
+        stack.push(0);
         
-        // Check [1, 2, 3] -> [3, 1, 2]
+        // Check [0, 1, 2, 3] -> [3, 0, 1, 2]
         stack.rotateBackward();
-        assertEquals(3, stack.size(), "Size should remain unchanged");
+        assertEquals(4, stack.size(), "Size should remain unchanged");
         assertEquals(3, stack.get(0), "First element should be 3");
-        assertEquals(1, stack.get(1), "Second element should be 1");
-        assertEquals(2, stack.get(2), "Third element should be 2");
+        assertEquals(0, stack.get(1), "Second element should be 0");
+        assertEquals(1, stack.get(2), "Third element should be 1");
+        assertEquals(2, stack.get(3), "Fourth element should be 2");
     }
 
     @Test
@@ -183,5 +201,21 @@ class StackTest {
     void testFindTargetPositionEmpty() {
         Stack emptyStack = new Stack();
         assertEquals(0, emptyStack.findTargetPosition(5));
+    }
+
+    @Test
+    void testToArray() {
+        Stack stack = new Stack(new int[]{2, 3, 1});
+        assertArrayEquals(new int[]{2, 3, 1}, stack.toArray());
+        stack.rotateBackward();
+        assertArrayEquals(new int[]{1, 2, 3}, stack.toArray());
+    }
+
+    @Test
+    void testIterator() {
+        Stack stack = new Stack(new int[]{2, 3, 1});
+        stack.rotateBackward();
+        int[] array = StreamSupport.stream(stack.spliterator(), false).mapToInt(i->i).toArray();
+        assertArrayEquals(new int[]{1, 2, 3}, array);
     }
 }
