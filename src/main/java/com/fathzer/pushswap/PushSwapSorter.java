@@ -12,7 +12,7 @@ public abstract class PushSwapSorter {
 
     protected PushSwapSorter(int[] numbers) {
         stackA = new Stack(numbers);
-        stackB = new Stack();
+        stackB = new Stack(numbers.length);
         operations = new LinkedList<>();
     }
 

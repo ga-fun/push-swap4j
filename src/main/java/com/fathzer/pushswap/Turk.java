@@ -165,19 +165,13 @@ public class Turk extends PushSwapSorter {
         // Pousser dans A
         pa();
         if (debug) {
-//            System.out.println("Stacks: " + stackA + " " + stackB);
+            System.out.println("Stacks: " + stackA + " " + stackB);
         }
     }
     
     private void finalRotation() {
-        // Trouver l'index du plus petit élément, qui vaut toujours 0 car la liste est normalisée
-        int minIndex = 0;
-        for (Integer value : stackA) {
-            if (value ==0) {
-                break;
-            }
-            minIndex++;
-        }
+        // Trouver l'index du plus petit élément
+        int minIndex = stackA.getHeadIndex();
         
         // Rotation pour mettre le plus petit en haut
         if (minIndex <= stackA.size() / 2) {
