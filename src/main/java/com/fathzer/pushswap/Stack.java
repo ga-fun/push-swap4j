@@ -50,6 +50,21 @@ public class Stack implements Iterable<Integer> {
         list[0] = element;
     }
 
+    public void push(Stack other, int count) {
+        size += count;
+        ensureCapacity(size);
+        System.arraycopy(list, 0, list, count, size-count);
+        for (int i = 1; i <= count; i++) {
+            list[count - i] = other.get(i-1);
+        }
+        other.delete(count);
+    }
+
+    private void delete(int count) {
+        size -= count;
+        System.arraycopy(list, count, list, 0, size);
+    }
+
     private void ensureCapacity(int capacity) {
         if (list.length < capacity) {
             list = Arrays.copyOf(list, capacity);
@@ -62,7 +77,17 @@ public class Stack implements Iterable<Integer> {
        System.arraycopy(list, 1, list, 0, size-1);
        list[size-1] = first;
     }
-    
+
+    public void rotateForward(int count) {
+        if (size < 2) return;
+        int k = count % size;
+        if (k == 0) return;
+
+        reverse(0, k - 1); // Inverse le bloc de tête
+        reverse(k, size - 1); // Inverse le bloc de queue
+        reverse(0, size - 1); // Inverse tout
+    }
+
     public void rotateBackward() {
         if (size < 2) return;
         int last = list[size-1];
@@ -70,9 +95,38 @@ public class Stack implements Iterable<Integer> {
         list[0] = last;
     }
 
+    public void rotateBackward(int count) {
+        if (size < 2) return;
+        int k = count % size;
+        if (k == 0) return;
+
+        reverse(0, size - k - 1); // Inverse le bloc de tête (ce qui reste)
+        reverse(size - k, size - 1); // Inverse le bloc de queue (ce qui va monter)
+        reverse(0, size - 1); // Inverse tout
+    }
+
+    private void reverse(int start, int end) {
+        while (start < end) {
+            int temp = list[start];
+            list[start] = list[end];
+            list[end] = temp;
+            start++;
+            end--;
+        }
+    }
+
     @Override
     public String toString() {
-        return Arrays.toString(list);
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for (int i = 0; i < size; i++) {
+            sb.append(list[i]);
+            if (i < size - 1) {
+                sb.append(", ");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
     }
 
     public boolean isSorted() {
@@ -163,7 +217,10 @@ public class Stack implements Iterable<Integer> {
         return Arrays.stream(list).limit(size).iterator();
     }
 
-    public int[] toArray() { //TODO rename to asArray
-        return list;
+    public int[] toArray() {
+        if (size==list.length) return list;
+        var result = new int[size];
+        System.arraycopy(list, 0, result, 0, size);
+        return result;
     }
 }

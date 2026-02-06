@@ -2,6 +2,7 @@ package com.fathzer.pushswap;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.function.Executable;
 
 import java.util.stream.StreamSupport;
 
@@ -125,10 +126,10 @@ class StackTest {
     @Test
     void testRotateForward() {
         Stack stack = new Stack();
-        assertDoesNotThrow(stack::rotateForward);
+        assertDoesNotThrow((Executable) stack::rotateForward);
 
         stack.push(3);
-        assertDoesNotThrow(stack::rotateForward);
+        assertDoesNotThrow((Executable) stack::rotateForward);
         assertEquals(3, stack.get(0), "Element should remain unchanged");
 
         stack.push(2);
@@ -147,10 +148,10 @@ class StackTest {
     @Test
     void testRotateBackward() {
         Stack stack = new Stack();
-        assertDoesNotThrow(stack::rotateBackward);
+        assertDoesNotThrow((Executable) stack::rotateBackward);
 
         stack.push(3);
-        assertDoesNotThrow(stack::rotateBackward);
+        assertDoesNotThrow((Executable) stack::rotateBackward);
         assertEquals(3, stack.get(0), "Element should remain unchanged");
 
         stack.push(2);
@@ -209,6 +210,10 @@ class StackTest {
         assertArrayEquals(new int[]{2, 3, 1}, stack.toArray());
         stack.rotateBackward();
         assertArrayEquals(new int[]{1, 2, 3}, stack.toArray());
+
+        // Check that element removal is working
+        stack.pop();
+        assertArrayEquals(new int[]{2, 3}, stack.toArray());
     }
 
     @Test

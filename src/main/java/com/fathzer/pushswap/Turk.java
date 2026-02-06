@@ -26,18 +26,19 @@ public class Turk extends PushSwapSorter {
         }
 
         // Phase 2 : Ramener les éléments de B vers A de manière optimale
+        Rotation rotation = new Rotation();
         while (!stackB.isEmpty()) {
-            pushCheapestToA();
+            pushCheapestToA(rotation);
         }
         
         // Rotation finale pour avoir le plus petit en haut
-        finalRotation();
+        finalRotation(rotation);
     }
 
     protected void pushToB() {
         // Phase 1 : Pousser tout dans B sauf 3 éléments
-        while (stackA.size() > 3) {
-            pb();
+        if (stackA.size() > 3) {
+            pb(stackA.size() - 3);
         }
         
         // Trier les 3 éléments restants dans A
@@ -60,7 +61,7 @@ public class Turk extends PushSwapSorter {
         }
     }
     
-    private void pushCheapestToA() {
+    private void pushCheapestToA(Rotation rotation) {
         int cheapestIndex = -1;
         int cheapestCost = Integer.MAX_VALUE;
         int cheapestTargetIndex = -1;
@@ -72,13 +73,13 @@ public class Turk extends PushSwapSorter {
             int value = stackB.get(i);
             int targetIndex = stackA.findTargetPosition(value);
 
-            int cost = calculateCost(i, targetIndex);
-            
+            rotation.cheapest(stackB, i, stackA, targetIndex);
+            int cost = rotation.cost();
             if (cost < cheapestCost) {
-                cheapestCost = cost;
                 cheapestIndex = i;
                 cheapestTargetIndex = targetIndex;
                 cheapestValue = value;
+                cheapestCost = cost;
                 tied = false;
             } else if (cost == cheapestCost) {
                 tied = true;
@@ -91,105 +92,36 @@ public class Turk extends PushSwapSorter {
         }
         
         // Exécuter les mouvements pour l'élément le moins cher
+        rotation.cheapest(stackB, cheapestIndex, stackA, cheapestTargetIndex);
         if (debug) {
-            System.out.print("Phase 2: Push cheapest to A: " + cheapestValue + " at index " + cheapestIndex+ " with cost " + cheapestCost+ " ("+tied+")");
+            System.out.print("Phase 2: Push cheapest to A: " + cheapestValue + " at index " + cheapestIndex+ " with cost " + cheapestCost+ " ("+tied+") with rotation "+rotation);
         }
-        executeMove(cheapestIndex, cheapestTargetIndex);
-    }
-    
-    private int calculateCost(int indexInB, int targetIndex) {
-        // Coût pour amener l'élément en haut de B
-        int costB = Math.min(indexInB, stackB.size() - indexInB);
-        
-        // Coût pour amener la position cible en haut de A
-        int costA = Math.min(targetIndex, stackA.size() - targetIndex);
-        
-        // Optimisation : si les deux rotations vont dans le même sens
-        boolean bothRotate = indexInB <= stackB.size() / 2 && targetIndex <= stackA.size() / 2;
-        boolean bothReverseRotate = indexInB > stackB.size() / 2 && targetIndex > stackA.size() / 2;
-        
-        return (bothRotate || bothReverseRotate) ? Math.max(costA, costB) : costA + costB;
-    }
-    
-    private void executeMove(int indexInB,int targetIndexA) {
-        if (debug) {
-            System.out.println(" to A index: " + targetIndexA);
-        }
-        
-        // Déterminer la direction des rotations
-        boolean rotateB = indexInB <= stackB.size() / 2;
-        boolean rotateA = targetIndexA <= stackA.size() / 2;
-        
-        int stepsB = rotateB ? indexInB : stackB.size() - indexInB;
-        int stepsA = rotateA ? targetIndexA : stackA.size() - targetIndexA;
-        
-        // Rotations simultanées si même direction
-        if (rotateB && rotateA) {
-            int simultaneous = Math.min(stepsB, stepsA);
-            for (int i = 0; i < simultaneous; i++) {
-                rr();
-            }
-            stepsB -= simultaneous;
-            stepsA -= simultaneous;
-        } else if (!rotateB && !rotateA) {
-            int simultaneous = Math.min(stepsB, stepsA);
-            for (int i = 0; i < simultaneous; i++) {
-                rrr();
-            }
-            stepsB -= simultaneous;
-            stepsA -= simultaneous;
-        }
-        
-        // Finir la rotation de B
-        if (rotateB) {
-            for (int i = 0; i < stepsB; i++) {
-                rb();
-            }
-        } else {
-            for (int i = 0; i < stepsB; i++) {
-                rrb();
-            }
-        }
-        
-        // Finir la rotation de A
-        if (rotateA) {
-            for (int i = 0; i < stepsA; i++) {
-                ra();
-            }
-        } else {
-            for (int i = 0; i < stepsA; i++) {
-                rra();
-            }
-        }
-        
+        rotate(rotation);
         // Pousser dans A
         pa();
         if (debug) {
-            System.out.println("Stacks: " + stackA + " " + stackB);
+            System.out.println(" => Stacks: " + stackA + " " + stackB);
         }
     }
     
-    private void finalRotation() {
+    private void finalRotation(Rotation rotation) {
         // Trouver l'index du plus petit élément
         int minIndex = stackA.getHeadIndex();
         
         // Rotation pour mettre le plus petit en haut
+        rotation.clear();
         if (minIndex <= stackA.size() / 2) {
             if (debug) {
                 System.out.println("Final rotation: " + minIndex + " forward rotations");
             }
-            for (int i = 0; i < minIndex; i++) {
-                ra();
-            }
+            rotation.ra = minIndex;
         } else {
             if (debug) {
                 System.out.println("Final rotation: " + (stackA.size() - minIndex) + " reverse rotations");
             }
-            int revSteps = stackA.size() - minIndex;
-            for (int i = 0; i < revSteps; i++) {
-                rra();
-            }
+            rotation.rra = stackA.size() - minIndex;
         }
+        rotate(rotation);
     }
     
     // ============ UTILITAIRES ============

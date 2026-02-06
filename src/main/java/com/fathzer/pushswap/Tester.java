@@ -41,7 +41,7 @@ public class Tester implements AutoCloseable {
     }
 
     private void debugTest(Function<int[], PushSwapSorter> sorterBuilder, int size) {
-        int[] numbers = IntegerListGenerator.normalize(generator.generate(size));
+        int[] numbers = new int[]{9, 7, 6, 8, 2, 1, 3, 5, 0, 4};
         System.out.println("Basic test with " + size + " elements: " + Arrays.toString(numbers));
         PushSwapSorter sorter = sorterBuilder.apply(numbers);
         ((Turk)sorter).setDebug(true);
@@ -50,7 +50,7 @@ public class Tester implements AutoCloseable {
         Checker checker = new Checker(numbers, sorter.getOperations());
         checker.sort();
         if (!checker.isSorted()) {
-            throw new IllegalStateException("Checker failed on " + List.of(numbers));
+            throw new IllegalStateException("Checker failed on " + Arrays.toString(numbers));
         }
     }
 
@@ -78,7 +78,7 @@ public class Tester implements AutoCloseable {
         Checker checker = new Checker(numbers, sorter.getOperations());
         checker.sort();
         if (!checker.isSorted()) {
-            throw new IllegalStateException("Checker failed on " + List.of(numbers));
+            throw new IllegalStateException("Checker failed on " + Arrays.toString(numbers));
         }
         return sorter.getOperations();
     }
