@@ -12,8 +12,8 @@ import java.util.stream.IntStream;
 public class Tester implements AutoCloseable {
     public static void main(String[] args) {
         try (Tester tester = new Tester(8)) {
-            Function<int[], PushSwapSorter> sorterBuilder = LisTurk::new;
-            // tester.debugTest(sorterBuilder, 10);
+            Function<int[], PushSwapSorter> sorterBuilder = Butterfly::new;
+            tester.debugTest(sorterBuilder, 50);
 
             doTest(tester, sorterBuilder, 100, 10000);
             // doTest(tester, sorterBuilder, 200, 5000);
@@ -41,10 +41,12 @@ public class Tester implements AutoCloseable {
     }
 
     private void debugTest(Function<int[], PushSwapSorter> sorterBuilder, int size) {
-        int[] numbers = new int[]{9, 7, 6, 8, 2, 1, 3, 5, 0, 4};
+        // int[] numbers = new int[]{9, 7, 6, 8, 2, 1, 3, 5, 0, 4};
+        // int[] numbers = IntegerListGenerator.normalize(generator.generate(size));
+        int[] numbers = new int[]{35, 2, 30, 0, 20, 25, 29, 18, 23, 26, 15, 48, 34, 21, 8, 17, 11, 16, 36, 3, 40, 6, 9, 49, 47, 38, 4, 27, 42, 37, 5, 44, 28, 13, 41, 43, 10, 32, 1, 14, 12, 31, 19, 24, 22, 39, 46, 7, 33, 45};
         System.out.println("Basic test with " + size + " elements: " + Arrays.toString(numbers));
         PushSwapSorter sorter = sorterBuilder.apply(numbers);
-        ((Turk)sorter).setDebug(true);
+        sorter.setDebug(true);
         sorter.sort();
         System.out.println("Result: "+sorter.getOperations().size()+" ("+sorter.getOperations()+")");
         Checker checker = new Checker(numbers, sorter.getOperations());

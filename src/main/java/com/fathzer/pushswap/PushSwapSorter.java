@@ -6,6 +6,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 public abstract class PushSwapSorter {
+    private boolean debug = false;
+
     protected Stack stackA;
     protected Stack stackB;
     protected List<Operation> operations;
@@ -178,6 +180,14 @@ public abstract class PushSwapSorter {
 
     public boolean isSorted() {
         return stackA.isSorted() && stackB.isEmpty();
+    }
+
+    public void setDebug(boolean debug) {
+        this.debug = debug;
+    }
+
+    protected boolean isDebug() {
+        return debug;
     }
 
     public abstract void sort();

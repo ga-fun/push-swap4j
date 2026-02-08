@@ -1,18 +1,8 @@
 package com.fathzer.pushswap;
 
 public class Turk extends PushSwapSorter {
-    private boolean debug = false;
-    
     public Turk(int[] numbers) {
         super(IntegerListGenerator.normalize(numbers));
-    }
-
-    public void setDebug(boolean debug) {
-        this.debug = debug;
-    }
-
-    protected boolean isDebug() {
-        return debug;
     }
 
     @Override
@@ -20,7 +10,7 @@ public class Turk extends PushSwapSorter {
         if (isSorted()) return;
 
         pushToB();
-        if (debug) {
+        if (isDebug()) {
             System.out.println("End of phase 1:");
             printStacks();
         }
@@ -93,13 +83,13 @@ public class Turk extends PushSwapSorter {
         
         // Exécuter les mouvements pour l'élément le moins cher
         rotation.cheapest(stackB, cheapestIndex, stackA, cheapestTargetIndex);
-        if (debug) {
+        if (isDebug()) {
             System.out.print("Phase 2: Push cheapest to A: " + cheapestValue + " at index " + cheapestIndex+ " with cost " + cheapestCost+ " ("+tied+") with rotation "+rotation);
         }
         rotate(rotation);
         // Pousser dans A
         pa();
-        if (debug) {
+        if (isDebug()) {
             System.out.println(" => Stacks: " + stackA + " " + stackB);
         }
     }
@@ -111,12 +101,12 @@ public class Turk extends PushSwapSorter {
         // Rotation pour mettre le plus petit en haut
         rotation.clear();
         if (minIndex <= stackA.size() / 2) {
-            if (debug) {
+            if (isDebug()) {
                 System.out.println("Final rotation: " + minIndex + " forward rotations");
             }
             rotation.ra = minIndex;
         } else {
-            if (debug) {
+            if (isDebug()) {
                 System.out.println("Final rotation: " + (stackA.size() - minIndex) + " reverse rotations");
             }
             rotation.rra = stackA.size() - minIndex;
