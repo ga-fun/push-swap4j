@@ -1,6 +1,6 @@
 package com.fathzer.pushswap;
 
-public class Butterfly extends PushSwapSorter {
+public class Butterfly extends AbstractPushSwapSorter {
 
     public Butterfly(int[] numbers) {
         super(IntegerListGenerator.normalize(numbers));
@@ -16,7 +16,8 @@ public class Butterfly extends PushSwapSorter {
             System.out.println("Start with window size "+offset+" for "+n+" elements");
         }
 
-        pushToB(offset);
+        pushToB(offset, 3);
+        sortThree();
         if (isDebug()) {
             System.out.println("End of phase 1 with "+getOperations().size()+" operations");
             System.out.println("Stack B: "+stackB);
@@ -25,19 +26,19 @@ public class Butterfly extends PushSwapSorter {
         pushBackOrdered();
     }
 
-    private void pushToB(int offset) {
+    private void pushToB(int range, int keptCount) {
         int i = 0;
+        int maxPushedValue = stackA.size() - 1 - keptCount;
         // ÉTAPE 1 : Transfert de A vers B (Création du sablier)
-        while (!stackA.isEmpty()) {
+        while (stackA.size() > keptCount) {
+            int value = stackA.get(0);
 
-            int topIndex = stackA.get(0);
-
-            if (topIndex <= i) {
+            if (value <= i) {
                 // Élément "petit" -> fond de B
                 pb();
                 rb();
                 i++;
-            } else if (topIndex <= i + offset) {
+            } else if (value <= i + range && value <= maxPushedValue) {
                 // Élément "moyen" -> haut de B
                 pb();
                 if (stackB.size() > 1 && stackB.get(0) < stackB.get(1)) {
@@ -51,6 +52,28 @@ public class Butterfly extends PushSwapSorter {
                 // pour éviter de tourner trop longtemps, mais le ra suffit 
                 // car i finira par augmenter via les autres conditions.
             }
+        }
+    }
+
+    private void sortThree() {
+        if (stackA.size() != 3) return;
+        
+        int top = stackA.get(0);
+        int mid = stackA.get(1);
+        int bot = stackA.get(2);
+        
+        if (top > mid && mid < bot && top < bot) {
+            sa();
+        } else if (top > mid && mid > bot) {
+            sa();
+            rra();
+        } else if (top > mid && mid < bot && top > bot) {
+            ra();
+        } else if (top < mid && mid > bot && top < bot) {
+            sa();
+            ra();
+        } else if (top < mid && mid > bot && top > bot) {
+            rra();
         }
     }
 

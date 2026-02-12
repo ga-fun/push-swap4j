@@ -5,19 +5,20 @@ import static com.fathzer.pushswap.Operation.*;
 import java.util.LinkedList;
 import java.util.List;
 
-public abstract class PushSwapSorter {
+public abstract class AbstractPushSwapSorter implements PushSwapManager {
     private boolean debug = false;
 
     protected Stack stackA;
     protected Stack stackB;
     protected List<Operation> operations;
 
-    protected PushSwapSorter(int[] numbers) {
+    protected AbstractPushSwapSorter(int[] numbers) {
         stackA = new Stack(numbers);
         stackB = new Stack(numbers.length);
         operations = new LinkedList<>();
     }
 
+    @Override
     public void sa() {
         swap(stackA);
         operations.add(SA);
@@ -32,17 +33,20 @@ public abstract class PushSwapSorter {
         return true;
     }
     
+    @Override
     public void sb() {
         swap(stackB);
         operations.add(SB);
     }
 
+    @Override
     public void ss() {
         swap(stackA);
         swap(stackB);
         operations.add(SS);
     }
     
+    @Override
     public void pa() {
         operations.add(PA);
         if (!stackB.isEmpty()) {
@@ -59,6 +63,7 @@ public abstract class PushSwapSorter {
         }
     }
     
+    @Override
     public void pb() {
         operations.add(PB);
         if (!stackA.isEmpty()) {
@@ -75,32 +80,38 @@ public abstract class PushSwapSorter {
         }
     }
     
+    @Override
     public void ra() {
         stackA.rotateForward();
         operations.add(RA);
     }
     
+    @Override
     public void rb() {
         stackB.rotateForward();
         operations.add(RB);
     }
     
+    @Override
     public void rr() {
         stackA.rotateForward();
         stackB.rotateForward();
         operations.add(RR);
     }
     
+    @Override
     public void rra() {
         stackA.rotateBackward();
         operations.add(RRA);
     }
     
+    @Override
     public void rrb() {
         stackB.rotateBackward();
         operations.add(RRB);
     }
     
+    @Override
     public void rrr() {
         stackA.rotateBackward();
         stackB.rotateBackward();
@@ -137,32 +148,6 @@ public abstract class PushSwapSorter {
             stackB.rotateBackward(-rbCount);
         } else if (rbCount > 0) {
             stackB.rotateForward(rbCount);
-        }
-    }
-
-    public void makeMove(Operation op) {
-        if (op == PA) {
-            this.pa();
-        } else if (op == PB) {
-            this.pb();
-        } else if (op == SA) {
-            this.sa();
-        } else if (op == SB) {
-            this.sb();
-        } else if (op == SS) {
-            this.ss();
-        } else if (op == RA) {
-            this.ra();
-        } else if (op == RB) {
-            this.rb();
-        } else if (op == RR) {
-            this.rr();
-        } else if (op == RRA) {
-            this.rra();
-        } else if (op == RRB) {
-            this.rrb();
-        } else if (op == RRR) {
-            this.rrr();
         }
     }
 

@@ -3,7 +3,7 @@ package com.fathzer.pushswap;
 import java.util.Arrays;
 import java.util.Iterator;
 
-public class Stack implements Iterable<Integer> {
+public class Stack implements IStack {
     private int[] list;  // Index 0 = haut de la pile
     private int size;
 
@@ -21,10 +21,6 @@ public class Stack implements Iterable<Integer> {
         System.arraycopy(elements, 0, this.list, 0, elements.length);
         this.size = elements.length;
     }
-
-    public boolean isEmpty() {
-        return size==0;
-    }
     
     public int size() {
         return size;
@@ -35,6 +31,7 @@ public class Stack implements Iterable<Integer> {
         return list[index];
     }
 
+    @Override
     public int pop() {
         if (size==0) throw new IndexOutOfBoundsException();
         int result = list[0];
@@ -43,6 +40,7 @@ public class Stack implements Iterable<Integer> {
         return result;
     }
 
+    @Override
     public void push(int element) {
         size++;
         ensureCapacity(size);
@@ -71,6 +69,7 @@ public class Stack implements Iterable<Integer> {
         }
     }
 
+    @Override
     public void rotateForward() {
        if (size < 2) return;
        int first = list[0];
@@ -88,6 +87,7 @@ public class Stack implements Iterable<Integer> {
         reverse(0, size - 1); // Inverse tout
     }
 
+    @Override
     public void rotateBackward() {
         if (size < 2) return;
         int last = list[size-1];
@@ -117,25 +117,7 @@ public class Stack implements Iterable<Integer> {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        for (int i = 0; i < size; i++) {
-            sb.append(list[i]);
-            if (i < size - 1) {
-                sb.append(", ");
-            }
-        }
-        sb.append("]");
-        return sb.toString();
-    }
-
-    public boolean isSorted() {
-        for (int i = 0; i < size() - 1; i++) {
-            if (get(i) > get(i + 1)) {
-                return false;
-            }
-        }
-        return true;
+        return asString();
     }
 
     /**
@@ -217,6 +199,7 @@ public class Stack implements Iterable<Integer> {
         return Arrays.stream(list).limit(size).iterator();
     }
 
+    @Override
     public int[] toArray() {
         if (size==list.length) return list;
         var result = new int[size];

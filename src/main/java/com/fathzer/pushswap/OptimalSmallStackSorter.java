@@ -53,6 +53,11 @@ public class OptimalSmallStackSorter {
          * @return A string representation that uniquely identifies this state
          */
         String getId() { return a.toString() + "|" + b.toString(); }
+
+        @Override
+        public String toString() {
+            return getId() + ": path=" + path + " cost=" + cost + " pushedToB=" + pushedToB;
+        }
     }
 
     /**
@@ -63,18 +68,23 @@ public class OptimalSmallStackSorter {
      */
     public static void main(String[] args) {
         List<List<Integer>> allPerms = new ArrayList<>();
-        List<Integer> target = Arrays.asList(494, 495, 496, 497, 498, 499);
+        List<Integer> target = Arrays.asList(0, 1, 2, 3, 4);
         generatePerms(new ArrayList<>(target), 0, allPerms);
         System.out.println("Generated " + allPerms.size() + " permutations");
+        int total = 0;
         long start = System.currentTimeMillis();
         
         for (List<Integer> startA : allPerms) {
             List<Operation> optimalPath = solve(startA, target);
-//            System.out.println("case " + startA + ": "+optimalPath);
+            System.out.println("case " + startA + ": "+optimalPath);
+            total += optimalPath.size();
         }
         long end = System.currentTimeMillis();
         System.out.println("Time: " + (end - start) + "ms");
+        System.out.println("Total operations: " + total);
     }
+
+    private static boolean DEBUG = false;
 
     /**
      * Finds the optimal sequence of operations to transform stack A from start configuration
@@ -88,6 +98,12 @@ public class OptimalSmallStackSorter {
      * @return A list of operations representing the optimal path, or empty list if no solution found
      */
     public static List<Operation> solve(List<Integer> startA, List<Integer> target) {
+        if (startA.size()!=target.size()) {
+            throw new IllegalArgumentException("Start and target lists must have the same size");
+        }
+        if (startA.size()>=16) {
+            throw new IllegalArgumentException("Start list must have less than 16 elements");
+        }
         startA = Arrays.stream(IntegerListGenerator.normalize(startA.stream().mapToInt(Integer::intValue).toArray())).boxed().toList();
         target = Arrays.stream(IntegerListGenerator.normalize(target.stream().mapToInt(Integer::intValue).toArray())).boxed().toList();
 
@@ -98,17 +114,29 @@ public class OptimalSmallStackSorter {
         queue.add(root);
         visited.put(root.getId(), 0);
 
+        int nodeCount = 0;
+
         // On retire tout ce qui fait tourne B ou qui mélange le fond de B
         Operation[] ops = {SA, PA, PB, RA, RRA, SS};
         while (!queue.isEmpty()) {
             State curr = queue.poll();
+            nodeCount++;
 
             if (curr.a.equals(target)) {
+                if (DEBUG) {
+                    System.out.println("Explored " + nodeCount + " nodes");
+                }
                 return curr.path;
             }
 
             for (Operation op : ops) {
+                if (DEBUG) {
+                    System.out.println("Applying operation: " + op + " to state: " + curr);
+                }
                 State next = apply(curr, op);
+                if (DEBUG && next != null) {
+                    System.out.println("  > Next state: " + next.a+" | "+next.b);
+                }
                 if (next != null && (!visited.containsKey(next.getId()) || visited.get(next.getId()) > curr.cost + 1)) {
                     if (!curr.path.isEmpty()) {
                         next.path.addAll(curr.path);
@@ -124,6 +152,9 @@ public class OptimalSmallStackSorter {
                     }
                     visited.put(next.getId(), next.cost);
                     queue.add(next);
+                    if (DEBUG) {
+                        System.out.println("  > Adding " + next + " to queue");
+                    }
                 }
             }
         }

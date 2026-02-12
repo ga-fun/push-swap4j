@@ -12,8 +12,8 @@ import java.util.stream.IntStream;
 public class Tester implements AutoCloseable {
     public static void main(String[] args) {
         try (Tester tester = new Tester(8)) {
-            Function<int[], PushSwapSorter> sorterBuilder = Butterfly::new;
-            tester.debugTest(sorterBuilder, 50);
+            Function<int[], AbstractPushSwapSorter> sorterBuilder = Butterfly::new;
+            tester.debugTest(sorterBuilder, 100);
 
             doTest(tester, sorterBuilder, 100, 10000);
             // doTest(tester, sorterBuilder, 200, 5000);
@@ -27,7 +27,7 @@ public class Tester implements AutoCloseable {
         }
     }
 
-    private static void doTest(Tester tester, Function<int[], PushSwapSorter> sorterBuilder, int size, int nbLoops) {
+    private static void doTest(Tester tester, Function<int[], AbstractPushSwapSorter> sorterBuilder, int size, int nbLoops) {
         int nbOperations = tester.testLoop(sorterBuilder, size, nbLoops);
         System.out.println("Average number of operations for " + size + " elements and " + nbLoops + " loops: " + nbOperations / nbLoops);
     }
@@ -40,12 +40,12 @@ public class Tester implements AutoCloseable {
         this.executor = Executors.newFixedThreadPool(nbThreads);
     }
 
-    private void debugTest(Function<int[], PushSwapSorter> sorterBuilder, int size) {
+    private void debugTest(Function<int[], AbstractPushSwapSorter> sorterBuilder, int size) {
         // int[] numbers = new int[]{9, 7, 6, 8, 2, 1, 3, 5, 0, 4};
-        // int[] numbers = IntegerListGenerator.normalize(generator.generate(size));
-        int[] numbers = new int[]{35, 2, 30, 0, 20, 25, 29, 18, 23, 26, 15, 48, 34, 21, 8, 17, 11, 16, 36, 3, 40, 6, 9, 49, 47, 38, 4, 27, 42, 37, 5, 44, 28, 13, 41, 43, 10, 32, 1, 14, 12, 31, 19, 24, 22, 39, 46, 7, 33, 45};
+        int[] numbers = IntegerListGenerator.normalize(generator.generate(size));
+        // int[] numbers = new int[]{35, 2, 30, 0, 20, 25, 29, 18, 23, 26, 15, 48, 34, 21, 8, 17, 11, 16, 36, 3, 40, 6, 9, 49, 47, 38, 4, 27, 42, 37, 5, 44, 28, 13, 41, 43, 10, 32, 1, 14, 12, 31, 19, 24, 22, 39, 46, 7, 33, 45};
         System.out.println("Basic test with " + size + " elements: " + Arrays.toString(numbers));
-        PushSwapSorter sorter = sorterBuilder.apply(numbers);
+        AbstractPushSwapSorter sorter = sorterBuilder.apply(numbers);
         sorter.setDebug(true);
         sorter.sort();
         System.out.println("Result: "+sorter.getOperations().size()+" ("+sorter.getOperations()+")");
@@ -56,7 +56,7 @@ public class Tester implements AutoCloseable {
         }
     }
 
-    public int testLoop(Function<int[], PushSwapSorter> sorterBuilder, int size, int nbLoops) {
+    public int testLoop(Function<int[], AbstractPushSwapSorter> sorterBuilder, int size, int nbLoops) {
         List<Future<Integer>> futures = IntStream.range(0, nbLoops).mapToObj(i -> executor.submit(() -> test(sorterBuilder, size).size())).toList();
         int totalOperations = 0;
         for (Future<Integer> future : futures) {
@@ -72,9 +72,9 @@ public class Tester implements AutoCloseable {
         return totalOperations;
     }
 
-    public List<Operation> test(Function<int[], PushSwapSorter> sorterBuilder, int size) {
+    public List<Operation> test(Function<int[], AbstractPushSwapSorter> sorterBuilder, int size) {
         int[] numbers = generator.generate(size);
-        PushSwapSorter sorter = sorterBuilder.apply(numbers);
+        AbstractPushSwapSorter sorter = sorterBuilder.apply(numbers);
         sorter.sort();
 
         Checker checker = new Checker(numbers, sorter.getOperations());

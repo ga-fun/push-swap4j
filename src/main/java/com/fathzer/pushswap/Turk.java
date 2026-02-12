@@ -1,6 +1,6 @@
 package com.fathzer.pushswap;
 
-public class Turk extends PushSwapSorter {
+public class Turk extends AbstractPushSwapSorter {
     public Turk(int[] numbers) {
         super(IntegerListGenerator.normalize(numbers));
     }

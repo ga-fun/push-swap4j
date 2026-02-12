@@ -2,7 +2,7 @@ package com.fathzer.pushswap;
 
 import java.util.List;
 
-public class Checker extends PushSwapSorter {
+public class Checker extends AbstractPushSwapSorter {
     private List<Operation> checkedOperations;
     
     public Checker(int[] numbers, List<Operation> operations) {
@@ -12,6 +12,6 @@ public class Checker extends PushSwapSorter {
 
     @Override
     public void sort() {
-        checkedOperations.forEach(this::makeMove);
+        checkedOperations.forEach(o -> o.apply(this));
     }
 }
