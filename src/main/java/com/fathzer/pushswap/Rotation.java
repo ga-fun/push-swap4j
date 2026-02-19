@@ -11,11 +11,43 @@ public class Rotation {
     int rr;
     int rrr;
 
+    /** Gets the cost of this rotation */
     public int cost() {
         return ra + rra + rb + rrb + rr + rrr;
     }
 
-    public void cheapest(Stack stackB, int indexInB, Stack stackA, int targetIndexA) {
+    /**
+     * Updates to the cheapest rotation to bring an element to the top of a stack
+     * @param stack the stack
+     * @param index the index of the element
+     */
+    public void cheapestToTop(IStack stack, int index, boolean isA) {
+        int distR = index;
+        int distRR = stack.size() - index;
+        clear();
+        if (distR <= distRR) {
+            if (isA) {
+                this.ra = distR;
+            } else {
+                this.rb = distR;
+            }
+        } else {
+            if (isA) {
+                this.rra = distRR;
+            } else {
+                this.rrb = distRR;
+            }
+        }
+    }
+
+    /**
+     * Updates this to the cheapest rotation to push an element from B to A
+     * @param stackB the stack B
+     * @param indexInB the index of the element in B
+     * @param stackA the stack A
+     * @param targetIndexA the target index in A
+     */
+    public void cheapest(IStack stackB, int indexInB, IStack stackA, int targetIndexA) {
         int stackBSize = stackB.size();
         int stackASize = stackA.size();
 
@@ -54,6 +86,7 @@ public class Rotation {
         }
     }
 
+    /** Clears this rotation */
     public void clear() {
         this.ra = 0;
         this.rra = 0;

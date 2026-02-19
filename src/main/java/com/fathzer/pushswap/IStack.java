@@ -12,6 +12,15 @@ public interface IStack extends Iterable<Integer> {
     
     int get(int index);
 
+    default int getIndex(int value) {
+        for (int i = 0; i < size(); i++) {
+            if (get(i) == value) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     default int pop() {
         return get(0);
     }

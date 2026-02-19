@@ -3,6 +3,10 @@ package com.fathzer.pushswap;
 import static com.fathzer.pushswap.Operation.*;
 
 import java.util.*;
+import java.util.stream.IntStream;
+
+import com.fathzer.pushswap.bfs.BFSLogger;
+import com.fathzer.pushswap.utilities.BasicBFSLogger;
 
 /**
  * An optimal stack sorter that finds the shortest sequence of operations to sort small stacks.
@@ -169,9 +173,18 @@ public class KillingSmallStackSorter {
      * @param args Command line arguments (not used)
      */
     public static void main(String[] args) {
-        List<List<Integer>> allPerms = new ArrayList<>();
-        List<Integer> target = Arrays.asList(0, 1, 2, 3, 4, 5);
         KillingSmallStackSorter sorter = new KillingSmallStackSorter();
+/*
+        List<Integer> initial = List.of(0, 2, 1, 3);
+        List<Integer> goal = IntStream.range(0, initial.size()).boxed().toList();
+        sorter.debug = true;
+        sorter.solve(initial, goal);
+        sorter.debug = false;
+        System.out.println("Node count: " + sorter.nodeCount);
+        System.exit(0);*/
+
+        List<List<Integer>> allPerms = new ArrayList<>();
+        List<Integer> target = Arrays.asList(0, 1, 2, 3, 4, 5, 6);
 
         generatePerms(new ArrayList<>(target), 0, allPerms);
         System.out.println("Generated " + allPerms.size() + " permutations");
@@ -225,7 +238,7 @@ public class KillingSmallStackSorter {
         visited.put(root, 0);
 
         // On retire tout ce qui fait tourne B ou qui mélange le fond de B
-        Operation[] ops = {SA, PA, PB, RA, RRA, SS};
+        Operation[] ops = {SA, SS, PA, PB, RA, RRA};
         while (!queue.isEmpty()) {
             State curr = queue.poll();
             nodeCount++;

@@ -10,21 +10,18 @@ import java.util.function.Predicate;
 
 public class BFS<O, N extends Node<O>> {
     private int nodeCount = 0;
-    private boolean debug = false;
+    private BFSLogger<O, N> logger = new BFSLogger<>(){};
 
     public int nodeCount() {
         return nodeCount;
     }
 
-    public boolean isDebug() {
-        return debug;
-    }
-
-    public void setDebug(boolean debug) {
-        this.debug = debug;
+    public void setLogger(BFSLogger logger) {
+        this.logger = logger;
     }
 
     public List<O> solve(N start, Predicate<N> isTarget) {
+        logger.startSearch(this, start);
         Objects.requireNonNull(isTarget);
 
         Queue<N> queue = new LinkedList<>();
@@ -39,28 +36,20 @@ public class BFS<O, N extends Node<O>> {
             nodeCount++;
 
             if (isTarget.test(curr)) {
-                // if (debug) {
-                //     System.out.println("Explored " + nodeCount + " nodes");
-                // }
+                logger.targetFound(this, curr);
                 return curr.path();
             }
 
             Iterable<O> ops = curr.getOperations();
-
             for (O op : ops) {
-                // if (debug) {
-                //     System.out.println("Applying operation: " + op + " to state: " + curr);
-                // }
+                logger.applyOperation(this, curr, op);
                 N next = curr.isRejected(op) ? null : curr.next(op);
-                // if (debug) {
-                //     System.out.println("  > Next state: " + (next == null ? "null" : FastStack.toString(next.a, next.aLen) + " | " + FastStack.toString(next.b, next.bLen)));
-                // }
-                if (next != null && (!visited.containsKey(next) || visited.get(next) > curr.cost())) {
+                logger.nextStateBuilt(this, curr, op, next);
+                if (next != null && (!visited.containsKey(next) || visited.get(next) > next.cost())) {
+                    next.validate(op);
                     visited.put(next, next.cost());
                     queue.add(next);
-                    // if (debug) {
-                    //     System.out.println("  > Adding " + next + " to queue");
-                    // }
+                    logger.nodeValidated(this, next, isTarget);
                 }
             }
         }

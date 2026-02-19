@@ -1,7 +1,7 @@
 package com.fathzer.pushswap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static com.fathzer.pushswap.CircularLIS.get;
+import static com.fathzer.pushswap.LIS.getCircular;
 
 import java.util.BitSet;
 import java.util.stream.Stream;
@@ -14,7 +14,7 @@ class CircularLISTest {
     @ParameterizedTest
     @MethodSource("testCases")
     void test(int[] input, int expectedCardinality) {
-        BitSet result = get(input);
+        BitSet result = getCircular(input);
 		assertEquals(expectedCardinality, result.cardinality(), "Wrong result for "+input+". result is "+result);
     }
 

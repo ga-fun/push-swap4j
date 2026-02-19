@@ -10,7 +10,7 @@ public class LisTurk extends Turk {
     @Override
     protected void pushToB() {
         // Get the Longest Increasing Subsequence in A stack
-        BitSet toKeep = CircularLIS.get(stackA.toArray());
+        BitSet toKeep = LIS.getCircular(stackA.toArray());
 
         if (isDebug()) {
             System.out.println("Longest Increasing Subsequence: " + toKeep);

@@ -3,11 +3,11 @@ package com.fathzer.pushswap;
 import java.util.Arrays;
 import java.util.BitSet;
 
-/** A Circular <a href="https://en.wikipedia.org/wiki/Longest_increasing_subsequence">Longest Increasing Subsequence (LIS)</a> finder that works on arrays of integers with no duplicates and all values in [0, n-1] (normalized).
+/** A <a href="https://en.wikipedia.org/wiki/Longest_increasing_subsequence">Longest Increasing Subsequence (LIS)</a> finder that works on circular arrays of integers with no duplicates and all values in [0, n-1] (normalized).
  * <br>
  * It is based on the <a href="https://en.wikipedia.org/wiki/Segment_tree">Segment Tree</a>.
  */
-public class CircularLIS {
+public class LIS {
 
     private static class SegmentTree {
         private int[] tree;
@@ -72,7 +72,7 @@ public class CircularLIS {
     private int[] indexInSeq;
     private SegmentTree segTree;
     
-    private CircularLIS(int n) {
+    private LIS(int n) {
         this.maxLen = 0;
         this.lastValue = -1;
         this.dp = new int[n];
@@ -143,7 +143,7 @@ public class CircularLIS {
      * <br>If not, the behavior is undefined.
      * @return a BitSet containing the values of the longest increasing subsequence
      */
-    public static BitSet get(int[] arr) {
+    public static BitSet getCircular(int[] arr) {
         BitSet result = new BitSet(arr.length);
         int n = arr.length;
         if (n == 0) return result;
@@ -154,7 +154,7 @@ public class CircularLIS {
         }
         
         int maxLISLength = 0;
-        CircularLIS instance = new CircularLIS(n);
+        LIS instance = new LIS(n);
         
         // On DOIT essayer chaque position de départ possible
         // car la meilleure LIS peut commencer n'importe où
@@ -169,5 +169,32 @@ public class CircularLIS {
         }
         
         return result;
+    }
+
+    public static BitSet get(int[] arr, int startIndex) {
+        BitSet result = new BitSet(arr.length);
+        int n = arr.length;
+        if (n == 0) return result;
+        if (n <= 2) {
+            result.set(0);
+            if (n == 2 && arr[0] == 0) {
+                result.set(1);
+            }
+            return result;
+        }
+        LIS instance = new LIS(n);
+        instance.processCircularLoop(arr, startIndex);
+        instance.setResult(result);
+        return result;
+    }
+
+    public static void main(String[] args) {
+        int[] arr = {40, 69, 68, 25, 95, 76, 16, 15, 84, 87, 96, 27, 3, 49, 70, 65, 2, 90, 20, 6, 77, 81, 50, 72, 44, 14, 98, 59, 36, 7, 64, 53, 4, 73, 43, 18, 51, 46, 47, 5, 66, 48, 1, 23, 83, 45, 86, 35, 63, 54, 75, 94, 60, 32, 41, 88, 62, 71, 31, 13, 11, 0, 33, 82, 9, 10, 91, 56, 28, 42, 12, 17, 61, 39, 80, 92, 19, 29, 52, 74, 34, 78, 55, 85, 93, 24, 8, 21, 99, 37, 58, 89, 26, 67, 22, 38, 97, 79, 30, 57};
+        show(getCircular(arr));
+        show(get(arr, 0));
+    }
+
+    private static void show(BitSet bits) {
+        System.out.println(bits);
     }
 }
