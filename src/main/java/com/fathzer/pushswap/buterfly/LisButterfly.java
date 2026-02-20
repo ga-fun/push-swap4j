@@ -11,26 +11,26 @@ import com.fathzer.pushswap.Rotation;
 
 public class LisButterfly extends AbstractButterfly {
     private static final boolean USE_CIRCULAR_LIS = true;
+    private BitSet inA;
 
     public LisButterfly(int[] numbers) {
         super(IntegerListGenerator.normalize(numbers));
     }
 
     private class LisPusher extends AbstractBPusher {
-        private final BitSet lis;
         private final List<Integer> toBeMoved;
         private final int windowSize;
         private int lowIndex;
 
         public LisPusher() {
-            this.lis = USE_CIRCULAR_LIS ? LIS.getCircular(stackA.toArray()) : LIS.get(stackA.toArray(), 0);
+            inA = USE_CIRCULAR_LIS ? LIS.getCircular(stackA.toArray()) : LIS.get(stackA.toArray(), 0);
             if (isDebug()) {
-                System.out.println("LIS ("+ lis.cardinality()+" elements): " + lis);
+                System.out.println("LIS ("+ inA.cardinality()+" elements): " + inA);
             }
-            this.toBeMoved = StreamSupport.stream(stackA.spliterator(), false).filter(value -> !lis.get(value)).sorted().toList();
+            this.toBeMoved = StreamSupport.stream(stackA.spliterator(), false).filter(value -> !inA.get(value)).sorted().toList();
             // windowSize définit la largeur de la fenêtre glissante.
             // Coéfficients empirique (marche bien pour 500 éléments).
-            this.windowSize = (int) (Math.sqrt(stackA.size()-lis.cardinality()) * 1.47);
+            this.windowSize = (int) (Math.sqrt(stackA.size()-inA.cardinality()) * 1.47);
             this.lowIndex = 0;
             this.low = toBeMoved.get(lowIndex);
             this.high = toBeMoved.get(lowIndex + windowSize - 1);
@@ -38,7 +38,7 @@ public class LisButterfly extends AbstractButterfly {
 
         @Override
         public Command evaluate(int value) {
-            if (lis.get(value)) {
+            if (inA.get(value)) {
                 return Command.KEEP;
             }
             return super.evaluate(value);
@@ -58,13 +58,79 @@ public class LisButterfly extends AbstractButterfly {
 
         @Override
         public boolean isNotEnded(IStack a) {
-            return stackA.size() > lis.cardinality();
+            return stackA.size() > inA.cardinality();
         }
     }
 
     @Override
     protected BPusher getBPusher() {
         return new LisPusher();
+    }
+
+    private static class DelayedOperations {
+        // Some operations on A can be delayed in order to find some operations on B that can be grouped with delayed ones.
+        private final LisButterfly manager;
+        private boolean saRequired;
+        private int rraRequired;
+        private boolean saRequiredAfterNextPa;
+        
+        private DelayedOperations(LisButterfly manager) {
+            this.manager = manager;
+        }
+
+        int headOfA() {
+            if (rraRequired==0) {
+                return manager.stackA.get(0);
+            }
+            return manager.stackA.get(manager.stackA.size() - rraRequired);
+        }
+
+        int tailOfA() {
+            return manager.stackA.get(manager.stackA.size() - 1 -rraRequired);
+        }
+        
+        void rra() {
+            doPendingSa();
+            rraRequired++;
+        }
+
+        void pa() {
+            // Perform pending operations before pushing from B to A
+            processPending();
+            manager.pa();
+            manager.inA.set(manager.stackA.get(0));
+            
+            if (saRequiredAfterNextPa) {
+                saRequired = true;
+                saRequiredAfterNextPa = false;
+            }
+        }
+
+        void rrb() {
+            if (rraRequired>0) {
+                doPendingSa();
+                rraRequired--;
+                manager.rrr();
+            } else {
+                manager.rrb();
+            }
+
+        }
+
+        void processPending() {
+            doPendingSa();
+            while (rraRequired > 0) {
+                manager.rra();
+                rraRequired--;
+            }
+        }
+
+        private void doPendingSa() {
+            if (saRequired) {
+                manager.sa();
+                saRequired = false;
+            }
+        }
     }
 
     @Override
@@ -90,50 +156,67 @@ public class LisButterfly extends AbstractButterfly {
         if (isDebug()) {
             System.out.println("Opérations phase 1: (after "+ rotation.cost() + " cost) " + getOperations());
         }
-        boolean saRequired = false;
+        DelayedOperations delayed = new DelayedOperations(this);
         for (int target=max; target>=0; target--) {
-//            System.out.println("------------"+target+"-----------");
-            if (stackA.get(stackA.size()-1) == target) {
-                // This value is already in A stack => move it to the top
-//            	System.out.println("max in last A position => rra");
-                rra();
-                continue;
-            } else if (stackA.get(0) == target) {
-//            	System.out.println("max in first A position: ignore");
-                // This value is at the top of A stack because we pushed it earlier => nothing to do
-                //TODO Warning will not work with delayed sa.
+            debug("------------"+target+"-----------");
+            if (inA.get(target)) {
+                debug("Is in A. head is = " + delayed.headOfA()+", end is "+delayed.tailOfA()+" - rraRequired="+delayed.rraRequired);
+                if (delayed.tailOfA() == target) {
+                    // This value is already in A stack => move it to the top
+                	debug("max in last A position => rra");
+                    delayed.rra();
+                } else if (delayed.headOfA() == target) {
+                	debug("max in first A position: ignore");
+                    // This value is at the top of A stack because we pushed it earlier => nothing to do
+                    //TODO Warning will not work with delayed sa.
+                }
                 continue;
             }
 
             if (stackB.get(0) == target - 1/* && stackB.size() > 1 */) {
-                pa();
+                // Fix me should be tested for every value found on the way to target!
+                delayed.pa();
                 // We will have to make a sa after adding max
-                saRequired = true;
+                delayed.saRequiredAfterNextPa = true;
             }
             
             // On optimise le chemin pour ramener 'target' en haut de B
             int pos = findPositionInB(target);
             if (pos<0) {
-            	throw new IllegalStateException();
+                throwError("Error unable to find position of " + target + " in B");
             }
             
             if (pos <= stackB.size() / 2) {
                 // Should be clever to check if a sb is enough for the last rb (it could save a rrb call later)
                 while (stackB.get(0) != target) rb();
             } else {
-                while (stackB.get(0) != target) rrb();
+                while (stackB.get(0) != target) delayed.rrb();
             }
             
-            pa();
+            delayed.pa();
 
-            // If we first push a smaller value (ex: 498 then 499), we need to sort them
-            if (saRequired) {
-                // Should be clever to delay this in order to group with a potential sb operation
-                sa();
-                saRequired = false;
-            }
-//            System.out.println("StackA: "+stackA);
-//            System.out.println("StackB: "+stackB);
+            // // If we first push a smaller value (ex: 498 then 499), we need to sort them
+            // if (saRequired) {
+            //     // Should be clever to delay this in order to group with a potential sb operation
+            //     sa();
+            //     saRequired = false;
+            // }
+            debug("StackA: "+stackA);
+            debug("StackB: "+stackB);
         }
+        delayed.processPending();
+    }
+    
+    private void debug(String message) {
+    	if (isDebug()) {
+            System.out.println(message);
+        }
+    }
+
+    private void throwError(String message) {
+        System.out.println("stackA: " + stackA);
+        System.out.println("stackB: " + stackB);
+        System.out.println("Ope: " + operations);
+        throw new IllegalStateException(message);
     }
 }
