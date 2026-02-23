@@ -24,13 +24,11 @@ public class LisButterfly extends AbstractButterfly {
 
         public LisPusher() {
             inA = USE_CIRCULAR_LIS ? LIS.getCircular(stackA.toArray()) : LIS.get(stackA.toArray(), 0);
-            if (isDebug()) {
-                System.out.println("LIS ("+ inA.cardinality()+" elements): " + inA);
-            }
             this.toBeMoved = StreamSupport.stream(stackA.spliterator(), false).filter(value -> !inA.get(value)).sorted().toList();
             // windowSize définit la largeur de la fenêtre glissante.
             // Coéfficients empirique (marche bien pour 500 éléments).
-            this.windowSize = (int) (Math.sqrt(stackA.size()-inA.cardinality()) * 1.47);
+            this.windowSize = (int) (Math.sqrt((double)stackA.size()-inA.cardinality()) * 1.6);
+            debug("LIS ("+ inA.cardinality()+" elements): " + inA + ". Starting PushToB with "+this.windowSize+" elements window");
             this.lowIndex = 0;
             this.low = toBeMoved.get(lowIndex);
             this.high = toBeMoved.get(lowIndex + windowSize - 1);
@@ -106,6 +104,19 @@ public class LisButterfly extends AbstractButterfly {
             }
         }
 
+        void sb() {
+            if (saRequired) {
+                manager.ss();
+                saRequired = false;
+            } else {
+                manager.sb();
+            }
+        }
+
+        void rb() {
+            manager.rb();
+        }
+
         void rrb() {
             if (rraRequired>0) {
                 doPendingSa();
@@ -156,6 +167,7 @@ public class LisButterfly extends AbstractButterfly {
         if (isDebug()) {
             System.out.println("Opérations phase 1: (after "+ rotation.cost() + " cost) " + getOperations());
         }
+        // Now push other elements on top of A
         DelayedOperations delayed = new DelayedOperations(this);
         for (int target=max; target>=0; target--) {
             debug("------------"+target+"-----------");
@@ -173,8 +185,8 @@ public class LisButterfly extends AbstractButterfly {
                 continue;
             }
 
-            if (stackB.get(0) == target - 1/* && stackB.size() > 1 */) {
-                // Fix me should be tested for every value found on the way to target!
+            if (stackB.first() == target - 1 && stackB.last()!=target) {
+                //FIXME should be tested for every value found on the way to target!
                 delayed.pa();
                 // We will have to make a sa after adding max
                 delayed.saRequiredAfterNextPa = true;
@@ -186,10 +198,26 @@ public class LisButterfly extends AbstractButterfly {
                 throwError("Error unable to find position of " + target + " in B");
             }
             
-            if (pos <= stackB.size() / 2) {
-                // Should be clever to check if a sb is enough for the last rb (it could save a rrb call later)
-                while (stackB.get(0) != target) rb();
+            if (pos==0) {
+                // Nothing to do, target is already at the top of B
+            } else if (pos <= stackB.size() / 2) {
+            	// FIXME, the test does not uses pending rra to be sure best way is rb (should be relevant only when stackB is small)
+            	// Faster to make rb
+                // We should be clever and check if a sb is enough for the last rb (it could save a rrb call later)
+                for (int i=0; i<pos-1; i++) {
+                    delayed.rb();
+                }
+                // Check if sb is better than rb
+                int nextToBePushed = getNextValueInBToBePushed(target);
+                boolean sbBetter = false;
+                if (stackB.first() == nextToBePushed || findPositionInB(nextToBePushed)>stackB.size() / 2) {
+                	// If next number of B to be pushed is the current first or at the bottom of the list, sb is better
+                    delayed.sb();
+                } else {
+                    delayed.rb();
+                }
             } else {
+            	// Faster to make rrb
                 while (stackB.get(0) != target) delayed.rrb();
             }
             
@@ -207,10 +235,12 @@ public class LisButterfly extends AbstractButterfly {
         delayed.processPending();
     }
     
-    private void debug(String message) {
-    	if (isDebug()) {
-            System.out.println(message);
+    private int getNextValueInBToBePushed(int target) {
+        int nextValue = target-1;
+        while (inA.get(nextValue)) {
+            nextValue--;
         }
+        return nextValue;
     }
 
     private void throwError(String message) {

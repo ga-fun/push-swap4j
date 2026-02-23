@@ -11,6 +11,16 @@ public interface IStack extends Iterable<Integer> {
     int size();
     
     int get(int index);
+    
+    
+    default int first() {
+    	return get(0);
+    }
+    
+    default int last() {
+    	return get(size()-1);
+    }
+
 
     default int getIndex(int value) {
         for (int i = 0; i < size(); i++) {
@@ -21,9 +31,7 @@ public interface IStack extends Iterable<Integer> {
         return -1;
     }
 
-    default int pop() {
-        return get(0);
-    }
+    int pop();
 
     void push(int value);
 

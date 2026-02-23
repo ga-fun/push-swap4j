@@ -17,14 +17,15 @@ public abstract class AbstractButterfly extends AbstractPushSwapSorter {
         BPusher bPusher = getBPusher();
 
         pushToB(bPusher);
-        if (isDebug()) {
-            System.out.println("End of phase 1 (push to B) with "+getOperations().size()+" operations");
-            System.out.println("Stack A: "+stackA);
-            System.out.println("Stack B: "+stackB);
-        }
+        debug("End of phase 1 (push to B) with "+getOperations().size()+" operations");
+        debugStacks();
 
         onPushToBEnded();
         pushBackOrdered();
+    }
+    
+    private boolean isBHeadAscending() {
+    	return stackB.size()>1 && stackB.get(0)<stackB.get(1);
     }
 
     protected void pushToB(BPusher bPusher) {
@@ -36,22 +37,29 @@ public abstract class AbstractButterfly extends AbstractPushSwapSorter {
         while (bPusher.isNotEnded(stackA)) {
             int value = stackA.get(0);
             Command command = bPusher.evaluate(value);
+//            debugStacks();
 
             if (command == Command.TO_BOTTOM) {
                 // Élément "petit" -> fond de B
                 pb();
+                // Do not execute rb immediately, try to group it with a future ra
                 rbRequired++;
                 debugNoPushCount = 0;
+//                debug("  -> Push to bottom. rbRequired="+rbRequired);
             } else if (command == Command.TO_TOP) {
                 // Élément "moyen" -> haut de B
                 rbRequired = executeDelayedRb(rbRequired);
                 pb();
-                if (stackB.size() > 1 && stackB.get(0) < stackB.get(1)) {
+//                debug("  -> Push to top");
+                
+                if (isBHeadAscending()) {
+                    // I tried here to also swap A when the two elements at top of A.get(1)>A.get(0), but for an unknown reason it leads to worse results.   
                     sb();
                 }
                 debugNoPushCount = 0;
             } else {
                 // Élément "grand" -> on le fait défiler
+//                debug("  -> Ignore");
                 if (rbRequired>0) {
                     rr();
                     rbRequired--;
@@ -92,7 +100,7 @@ public abstract class AbstractButterfly extends AbstractPushSwapSorter {
             int target = stackB.size() - 1; // On cherche l'index maximum actuel dans B
             int next = target - 1;
 
-            if (stackB.get(0) == next && stackB.size() > 1) {
+            if (stackB.first() == next && stackB.last()!=target) {
                 pa();
                 // On cherchera le max au tour d'après, puis on fera un SA
             }
@@ -120,5 +128,18 @@ public abstract class AbstractButterfly extends AbstractPushSwapSorter {
     // Méthode utilitaire pour trouver la position d'une valeur dans la pile B
     protected int findPositionInB(int indexValue) {
         return stackB.getIndex(indexValue);
+    }
+    
+    protected void debug(String message) {
+    	if (isDebug()) {
+            System.out.println(message);
+        }
+    }
+    
+    protected void debugStacks() {
+    	if (isDebug()) {
+            debug("Stack A: "+stackA);
+            debug("Stack B: "+stackB);
+    	}
     }
 }
