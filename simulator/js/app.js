@@ -1,4 +1,5 @@
 import { PushSwapSim } from './pushswapsim.js';
+import { TwoStacks } from './stack.js';
 
 export class PushSwapApp {
     constructor() {
@@ -73,8 +74,8 @@ export class PushSwapApp {
     }
 
     generateRandom() {
-        const size = parseInt(document.getElementById('randomSize').value) || 100;
-        const arr = Array.from({length: size}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+        const size = Number.parseInt(document.getElementById('randomSize').value) || 100;
+        const arr = Array.from({length: size}, (_, i) => i).sort(() => Math.random() - 0.5);
         document.getElementById('globalInput').value = arr.join(' ');
         this.applyToAll();
     }
@@ -82,35 +83,31 @@ export class PushSwapApp {
     applyToAll() {
         const val = document.getElementById('globalInput').value;
         localStorage.setItem('ps_global_stack', val);
+        const numbers = val.replace(/,/g, ' ').trim().split(/\s+/).filter(x => x !== "").map(Number);
         this.sims.forEach(sim => { 
-            sim.currentIndex = 0; 
-            sim.setInitialState(val); 
+            sim.setInitialState(numbers); 
+            sim.setIndex(0); 
         });
     }
 
     syncStep(dir) { this.sims.forEach(s => s.step(dir)); }
 
     syncStop() {
-        this.sims.forEach(s => s.isPlaying = false);
+        this.sims.forEach(s => s.setPlaying(false));
         this.updateSyncToolbar();
     }
 
     async syncPlay() {
-        this.sims.forEach(s => s.isPlaying = true);
+        this.sims.forEach(s => s.setPlaying(true));
         this.updateSyncToolbar();
 
-        while (this.sims.some(s => s.currentIndex < s.movesList.length) && this.sims.every(s => s.isPlaying)) {
+        while (this.sims.every(s => s.isPlaying())) {
             let moved = false;
             this.sims.forEach(s => { 
-                if (s.currentIndex < s.movesList.length) {
-                    s.currentIndex++; 
-                    s.render(true); 
-                    s.saveLocal();
-                    moved = true;
-                }
+                if (s.step(1)) moved = true;
             });
             if (!moved) break;
-            await new Promise(r => setTimeout(r, parseInt(this.sims[0].speedInput.value)));
+            await new Promise(r => setTimeout(r, Number.parseInt(this.sims[0].speedInput.value)));
         }
         this.syncStop();
     }
@@ -119,8 +116,7 @@ export class PushSwapApp {
 
     checkIfMatch() {
         if (this.sims.length < 2) return true;
-        return JSON.stringify(this.sims[0].a) === JSON.stringify(this.sims[1].a) && 
-               JSON.stringify(this.sims[0].b) === JSON.stringify(this.sims[1].b);
+        return this.sims[0].getStacks().equals(this.sims[1].getStacks());
     }
 
     updateSyncStatus() {
@@ -136,8 +132,8 @@ export class PushSwapApp {
     }
 
     updateSyncToolbar() {
-        const anyPlaying = this.sims.some(s => s.isPlaying);
-        const anyEmpty = this.sims.some(s => s.movesList.length === 0);
+        const anyPlaying = this.sims.some(s => s.isPlaying());
+        const anyEmpty = this.sims.some(s => s.getMoveListSize() === 0);
         
         document.getElementById('btn-sync-play').disabled = anyPlaying || anyEmpty;
         document.getElementById('btn-sync-stop').disabled = !anyPlaying;
@@ -145,20 +141,19 @@ export class PushSwapApp {
     }
 
     getStateAt(sim, index) {
-        let a = [...sim.initialState.replace(/,/g, ' ').trim().split(/\s+/).filter(x => x !== "").map(Number)].reverse();
-        let b = [];
-        const limit = Math.min(index, sim.movesList.length);
-        for (let i = 0; i < limit; i++) sim.executePhysics(sim.movesList[i], a, b);
-        return JSON.stringify({a, b});
+        let stacks = new TwoStacks(sim.getInitialState(), []);
+        const limit = Math.min(index, sim.getMoveListSize());
+        for (let i = 0; i < limit; i++) stacks.applyMove(sim.getMoveAt(i));
+        return stacks;
     }
 
     findNextDiff() {
         const [s1, s2] = this.sims;
-        let offA = s1.currentIndex, offB = s2.currentIndex;
+        let offA = s1.getIndex(), offB = s2.getIndex();
         let found = false;
 
-        while (offA < s1.movesList.length || offB < s2.movesList.length) {
-            if (s1.movesList[offA] !== s2.movesList[offB]) { found = true; break; }
+        while (offA < s1.getMoveListSize() || offB < s2.getMoveListSize()) {
+            if (s1.getMoveAt(offA) !== s2.getMoveAt(offB)) { found = true; break; }
             offA++; offB++;
         }
 
@@ -169,7 +164,7 @@ export class PushSwapApp {
     }
 
     findNextConvergenceOnly() {
-        this.findConvergence(this.sims[0].currentIndex, this.sims[1].currentIndex);
+        this.findConvergence(this.sims[0].getIndex(), this.sims[1].getIndex());
     }
 
     findConvergence(offA, offB) {
@@ -180,7 +175,9 @@ export class PushSwapApp {
         outer: for (let i = 0; i <= range; i++) {
             for (let j = 0; j <= range; j++) {
                 if (i === 0 && j === 0) continue;
-                if (this.getStateAt(s1, offA + i) === this.getStateAt(s2, offB + j)) {
+                let aState = this.getStateAt(s1, offA + i);
+                let bState = this.getStateAt(s2, offB + j)
+                if (aState.equals(bState)) {
                     convA = offA + i; convB = offB + j;
                     break outer;
                 }
@@ -188,15 +185,14 @@ export class PushSwapApp {
         }
 
         this.lastDiff = { offA, offB, convA, convB };
-        s1.currentIndex = offA; s2.currentIndex = offB;
-        s1.render(true); s2.render(true);
+        s1.setIndex(offA); s2.setIndex(offB);
         this.applyHighlight();
     }
 
     applyHighlight() {
         const { offA, offB, convA, convB } = this.lastDiff;
-        const endA = convA !== -1 ? convA : this.sims[0].movesList.length;
-        const endB = convB !== -1 ? convB : this.sims[1].movesList.length;
+        const endA = convA !== -1 ? convA : this.sims[0].getMoveListSize();
+        const endB = convB !== -1 ? convB : this.sims[1].getMoveListSize();
         
         const lenA = endA - offA, lenB = endB - offB;
         document.getElementById('diff-stats').innerHTML = `<span class="diff-badge">A: ${lenA}</span> <span class="diff-badge">B: ${lenB}</span>`;
@@ -216,9 +212,8 @@ export class PushSwapApp {
 
     skipToConvergence() {
         if (this.lastDiff.convA === -1) return;
-        this.sims[0].currentIndex = this.lastDiff.convA;
-        this.sims[1].currentIndex = this.lastDiff.convB;
-        this.sims.forEach(s => s.render(true));
+        this.sims[0].setIndex(this.lastDiff.convA);
+        this.sims[1].setIndex(this.lastDiff.convB);
         document.getElementById('merge-tools').style.display = 'none';
     }
 
@@ -234,11 +229,10 @@ export class PushSwapApp {
 
         if (endFrom === -1 || endTo === -1) return;
 
-        const newMoves = fromSim.movesList.slice(startFrom, endFrom);
-        toSim.movesList.splice(startTo, endTo - startTo, ...newMoves);
-        
-        toSim.render(true);
-        toSim.saveLocal();
+        const newMoves = fromSim.getMovesList().slice(startFrom, endFrom);
+        const updatedMoves = toSim.getMovesList(); 
+        updatedMoves.splice(startTo, endTo - startTo, ...newMoves);
+        toSim.setMovesList(updatedMoves);
         this.refreshGlobalUI();
     }
 }
