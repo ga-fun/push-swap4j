@@ -4,6 +4,7 @@ export class ListView {
     #currentIndex = 0;
     #onItemClick;
     #onItemMouseEnter;
+    #visibleRange = { start: 0, end: 0 }; // Cache de la plage visible
 
     /**
      * @param {HTMLElement} container - L'élément où injecter la liste
@@ -13,6 +14,22 @@ export class ListView {
         this.#container = container;
         this.#onItemClick = options.onItemClick || null;
         this.#onItemMouseEnter = options.onItemMouseEnter || null;
+        
+        // Initialiser le cache de la plage visible
+        this.#updateVisibleRange();
+        
+        // Observer les changements de taille pour invalider le cache
+        if (globalThis.ResizeObserver) {
+            const resizeObserver = new ResizeObserver(() => {
+                this.#updateVisibleRange();
+            });
+            resizeObserver.observe(this.#container);
+        }
+        
+        // Observer les scroll pour mettre à jour la plage visible
+        this.#container.addEventListener('scroll', () => {
+            this.#updateVisibleRange();
+        }, { passive: true });
     }
 
     /**
@@ -23,6 +40,9 @@ export class ListView {
         const indexChanged = this.#currentIndex !== currentIndex;
         
         if (!listChanged && !indexChanged) return;
+
+        const oldIndex = this.#currentIndex;
+        this.#currentIndex = currentIndex;
         
         if (listChanged) {
             this.#list = list;
@@ -31,10 +51,8 @@ export class ListView {
             }
         } else if (indexChanged && redraw) {
             // Seul l'index a changé, on met juste à jour les classes
-            this.#updateClassesOnly(this.#currentIndex, currentIndex);
+            this.#updateClassesOnly(oldIndex);
         }
-        
-        this.#currentIndex = currentIndex;
     }
 
     /**
@@ -69,23 +87,62 @@ export class ListView {
     }
 
     /** Scroll automatique vers l'élément actif */
-    #scrollToSelected() {
-        const current = this.#container.querySelector('.move-current');
-        if (current) {
-            current.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+    #scrollToSelected(currentElement = null) {
+        // Optimisation: utiliser le cache de plage visible pour éviter les calculs
+        const targetIndex = this.#currentIndex - 1;
+        
+        // Si l'index cible est dans la plage visible, pas besoin de scroller
+        if (targetIndex >= this.#visibleRange.start && targetIndex <= this.#visibleRange.end) {
+            return;
         }
+        
+        const current = currentElement || this.#container.querySelector('.move-current');
+        if (!current) return;
+
+        // Sinon, scroller et mettre à jour le cache
+        current.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+        this.#updateVisibleRange();
+    }
+
+    /**
+     * Met à jour le cache de la plage d'éléments visibles
+     */
+    #updateVisibleRange() {
+        const spans = this.#container.children;
+        if (spans.length === 0) {
+            this.#visibleRange = { start: 0, end: 0 };
+            return;
+        }
+
+        const containerRect = this.#container.getBoundingClientRect();
+        const containerTop = containerRect.top;
+        const containerBottom = containerRect.bottom;
+
+        let start = -1;
+        let end = -1;
+
+        for (let i = 0; i < spans.length; i++) {
+            const span = spans[i];
+            const spanRect = span.getBoundingClientRect();
+            
+            if (spanRect.bottom >= containerTop && spanRect.top <= containerBottom) {
+                if (start === -1) start = i;
+                end = i;
+            }
+        }
+
+        this.#visibleRange = { start, end };
     }
 
     getIndex() { return this.#currentIndex; }
 
     setIndex(idx) {
-        console.log("setIndex", idx);
         if (idx === this.#currentIndex) return;
         const oldIndex = this.#currentIndex;
         this.#currentIndex = idx;
         
         // Optimisation: mise à jour des classes seulement
-        this.#updateClassesOnly(oldIndex, idx);
+        this.#updateClassesOnly(oldIndex);
     }
 
     getList() { return this.#list; }
@@ -104,23 +161,29 @@ export class ListView {
     /**
      * Met à jour uniquement les classes CSS des éléments entre oldIndex et newIndex
      */
-    #updateClassesOnly(oldIndex, newIndex) {
+    #updateClassesOnly(oldIndex) {
         const spans = this.#container.querySelectorAll('.move-item');
         
         // Déterminer la plage d'éléments à mettre à jour
-        const minIndex = Math.min(oldIndex, newIndex);
-        const maxIndex = Math.max(oldIndex, newIndex);
+        const minIndex = Math.min(oldIndex, this.#currentIndex);
+        const maxIndex = Math.max(oldIndex, this.#currentIndex);
         
-        for (let i = minIndex; i <= maxIndex && i < spans.length; i++) {
-            const span = spans[i];
+        let selectedElement = null;
+
+        for (let i = minIndex; i <= maxIndex; i++) {
+            const span = spans[i-1];
             if (!span) continue;
-            
+
             // Mettre à jour les classes
-            span.className = "move-item " + 
-                (i === this.#currentIndex - 1 ? "move-current " : "") + 
-                (i < this.#currentIndex ? "move-past" : "");
+            span.className = "move-item";
+            if (i === this.#currentIndex) {
+                selectedElement = span;
+                span.classList.add('move-current');
+            } else if (i < this.#currentIndex) {
+                span.classList.add('move-past');
+            }
         }
         
-        this.#scrollToSelected();
+        this.#scrollToSelected(selectedElement);
     }
 }

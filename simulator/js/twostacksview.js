@@ -43,53 +43,42 @@ export class TwoStacksView {
     }
 
     #applyDOMMove(move) {
-        console.log("applyDOMMove", move);
-        const stackA = this.#stacks.getStackA();
-        const stackB = this.#stacks.getStackB();
-        
-        // Calculate max value for width calculations
-        let maxVal = 1;
-        const allValues = [...stackA.iterator(), ...stackB.iterator()];
-        if (allValues.length > 0) {
-            maxVal = Math.max(...allValues.map(Math.abs));
-        }
-
         switch (move) {
             case 'sa':
-                this.#swapTopElements(this.#viewA, stackA, maxVal);
+                this.#swapTopElements(this.#viewA);
                 break;
             case 'sb':
-                this.#swapTopElements(this.#viewB, stackB, maxVal);
+                this.#swapTopElements(this.#viewB);
                 break;
             case 'ss':
-                this.#swapTopElements(this.#viewA, stackA, maxVal);
-                this.#swapTopElements(this.#viewB, stackB, maxVal);
+                this.#swapTopElements(this.#viewA);
+                this.#swapTopElements(this.#viewB);
                 break;
             case 'pa':
-                this.#pushElement(this.#viewB, this.#viewA, stackB, stackA, maxVal);
+                this.#pushElement(this.#viewB, this.#viewA);
                 break;
             case 'pb':
-                this.#pushElement(this.#viewA, this.#viewB, stackA, stackB, maxVal);
+                this.#pushElement(this.#viewA, this.#viewB);
                 break;
             case 'ra':
-                this.#rotateStack(this.#viewA, stackA, maxVal);
+                this.#rotateStack(this.#viewA);
                 break;
             case 'rb':
-                this.#rotateStack(this.#viewB, stackB, maxVal);
+                this.#rotateStack(this.#viewB);
                 break;
             case 'rr':
-                this.#rotateStack(this.#viewA, stackA, maxVal);
-                this.#rotateStack(this.#viewB, stackB, maxVal);
+                this.#rotateStack(this.#viewA);
+                this.#rotateStack(this.#viewB);
                 break;
             case 'rra':
-                this.#reverseRotateStack(this.#viewA, stackA, maxVal);
+                this.#reverseRotateStack(this.#viewA);
                 break;
             case 'rrb':
-                this.#reverseRotateStack(this.#viewB, stackB, maxVal);
+                this.#reverseRotateStack(this.#viewB);
                 break;
             case 'rrr':
-                this.#reverseRotateStack(this.#viewA, stackA, maxVal);
-                this.#reverseRotateStack(this.#viewB, stackB, maxVal);
+                this.#reverseRotateStack(this.#viewA);
+                this.#reverseRotateStack(this.#viewB);
                 break;
         }
 
@@ -97,50 +86,32 @@ export class TwoStacksView {
         this.#container.classList.toggle('success-border', this.#stacks.isSorted());
     }
 
-    #swapTopElements(viewElement, stack, maxVal) {
-        if (stack.getSize() < 2) return;
-        
+    #swapTopElements(viewElement) {
         const elements = viewElement.children;
         if (elements.length < 2) return;
         
-        // Swap the first two elements (top of stack)
+        // Swap the first two elements using modern DOM methods
         const first = elements[0];
         const second = elements[1];
-        const temp = document.createElement('div');
         
-        first.before(temp);
+        // Insert second before first, then first before second
         second.before(first);
-        temp.before(second);
-        temp.remove();
+        first.before(second);
     }
 
-    #pushElement(fromView, toView, fromStack, toStack, maxVal) {
-        if (fromStack.getSize() === 0) return;
-        
+    #pushElement(fromView, toView) {
         const fromElements = fromView.children;
         if (fromElements.length === 0) return;
         
-        // Get the top element from source stack
+        // Move the top element from source to destination
         const topElement = fromElements[0];
-        const value = fromStack.top();
         
-        // Create new element for destination
-        const newElement = document.createElement('div');
-        newElement.className = 'element';
-        const width = maxVal ? (Math.abs(value) / maxVal) * 100 : 0;
-        newElement.innerHTML = `
-            <span class="el-label">${value}</span>
-            <div class="el-bar" style="width:${width}%; background:hsl(${200 + (width * 1.2)},70%,50%)"></div>
-        `;
-        
-        // Remove from source and add to destination
+        // Move the element from source to destination
         topElement.remove();
-        toView.insertBefore(newElement, toView.firstChild);
+        toView.insertBefore(topElement, toView.firstChild);
     }
 
-    #rotateStack(viewElement, stack, maxVal) {
-        if (stack.getSize() < 2) return;
-        
+    #rotateStack(viewElement) {
         const elements = viewElement.children;
         if (elements.length < 2) return;
         
@@ -150,9 +121,7 @@ export class TwoStacksView {
         viewElement.appendChild(topElement);
     }
 
-    #reverseRotateStack(viewElement, stack, maxVal) {
-        if (stack.getSize() < 2) return;
-        
+    #reverseRotateStack(viewElement) {
         const elements = viewElement.children;
         if (elements.length < 2) return;
         
