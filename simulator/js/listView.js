@@ -148,6 +148,39 @@ export class ListView {
     getList() { return this.#list; }
 
     /**
+     * Applique une sélection sur une plage d'éléments avec un type spécifique
+     * @param {number} start - Index de début (inclus)
+     * @param {number} end - Index de fin (exclus)
+     * @param {string} type - Type de sélection: 'better', 'neutral', 'worse'
+     */
+    applySelection(start, end, type = 'neutral') {
+        const spans = this.#container.querySelectorAll('.move-item');
+        
+        // Retirer toutes les classes de sélection existantes
+        spans.forEach(span => {
+            span.classList.remove('move-diff-better', 'move-diff-worse', 'move-diff-neutral');
+        });
+        
+        // Appliquer la nouvelle sélection
+        for (let i = start; i < end && i < spans.length; i++) {
+            const span = spans[i];
+            if (span) {
+                span.classList.add(`move-diff-${type}`);
+            }
+        }
+    }
+
+    /**
+     * Efface toutes les sélections
+     */
+    clearSelection() {
+        const spans = this.#container.querySelectorAll('.move-item');
+        spans.forEach(span => {
+            span.classList.remove('move-diff-better', 'move-diff-worse', 'move-diff');
+        });
+    }
+
+    /**
      * Compare deux tableaux pour savoir s'ils sont égaux
      */
     #arraysEqual(arr1, arr2) {

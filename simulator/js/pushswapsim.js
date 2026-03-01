@@ -56,8 +56,8 @@ export class PushSwapSim {
         const anchor = this.container.querySelector('.ps-visualizer-anchor');
         this.#stacksView = new TwoStacksView(anchor);
 
-        this.movesView = this.container.querySelector('.moves-display');
-        this.#movesView = new ListView(this.movesView, {
+        const movesView = this.container.querySelector('.moves-display');
+        this.#movesView = new ListView(movesView, {
             onItemClick: (move, i) => this.setIndex(i + 1),
             onItemMouseEnter: (move, i, el) => {
                 if (this.#isPlaying) return;
@@ -89,7 +89,7 @@ export class PushSwapSim {
         this.container.querySelector('.btn-stop').onclick = () => this.#isPlaying = false;
         this.container.querySelector('.btn-copy').onclick = () => this.#copyMoves();
         this.container.querySelector('.btn-clear').onclick = () => this.#clearMoves();
-        this.movesView.oninput = () => { this.#syncMoves(); this.#saveLocal(); };
+        this.container.querySelector('.moves-display').oninput = () => { this.#syncMoves(); this.#saveLocal(); };
 
         this.container.querySelectorAll('.btn-mode-edit').forEach(btn => {
             btn.onclick = () => {
@@ -237,7 +237,7 @@ export class PushSwapSim {
     }
 
     #syncMoves() {
-        const text = this.movesView.innerText.replace(/,/g, ' ');
+        const text = this.container.querySelector('.moves-display').innerText.replace(/,/g, ' ');
         let moves = text.trim().split(/\s+/).filter(x => x !== "");
         let idx = this.#movesView.getIndex();
 
@@ -310,6 +310,11 @@ export class PushSwapSim {
     #updateSidebar(force) {
         this.container.querySelector('.idx-label').innerText = this.#movesView.getIndex();
         this.container.querySelector('.count-label').innerText = `${this.#movesView.getList().length} moves`;
+    }
+
+    setMovesSelection(start, end, className) {
+        this.#movesView.clearSelection();
+        if (start < end) this.#movesView.applySelection(start, end, className);
     }
 
     async #runAuto() {
