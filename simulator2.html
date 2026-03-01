@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Push_swap Diff-Debugger & Optimizer</title>
+    <style>
+        :root { --bg: #0f0f0f; --panel: #1a1a1a; --border: #333; --accent: #e65100; --blue: #0277bd; --green: #2e7d32; }
+        
+        /* RESET & BASE */
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: #e0e0e0; margin: 0; padding: 20px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box; overflow: hidden; }
+        input[type=text], input[type=number] { background: #000; color: #fff; border: 1px solid var(--border); padding: 6px; border-radius: 4px; }
+
+        /* BOUTONS GLOBAUX (Toolbar & Header) */
+        .btn-header, .btn-action, .btn-merge { 
+            padding: 8px 12px; background: var(--blue); color: white; border: none; border-radius: 4px; 
+            cursor: pointer; font-weight: bold; font-size: 12px; transition: all 0.2s; 
+        }
+        .btn-header:disabled, .btn-action:disabled, .btn-merge:disabled { opacity: 0.3; cursor: not-allowed; filter: grayscale(1); }
+        
+        /* HOVER UNIVERSEL */
+        .btn-header:not(:disabled):hover, .btn-action:not(:disabled):hover, .btn-merge:not(:disabled):hover { 
+            filter: brightness(1.2); box-shadow: 0 0 8px rgba(255,255,255,0.1); 
+        }
+
+        /* SPECIFICITÉS SIDEBAR (Taille réduite & Gris par défaut) */
+        .ps-sidebar .btn-action { padding: 4px; font-size: 10px; background: #333; border: 1px solid #444; }
+        .ps-sidebar .btn-mode-edit { font-size: 9px; padding: 3px; background: #222; }
+        .ps-sidebar .btn-mode-edit.active { background: var(--blue); border-color: #40c4ff; }
+        .ps-sidebar .btn-delete { margin-top: 4px; width: 100%; font-weight: bold; }
+
+        /* COULEURS ET ÉTATS SPÉCIFIQUES */
+        .btn-play-style { background: var(--accent) !important; }
+        .btn-stop-style { background: #b71c1c !important; }
+        .btn-blue-style { background: var(--blue) !important; }
+        .btn-mode.active { background: var(--green); }
+
+        /* LAYOUT STRUCTURE */
+        header { background: var(--panel); padding: 12px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
+        #sync-controls { background: #252525; padding: 10px; border-radius: 8px; border: 1px solid #444; display: flex; gap: 8px; align-items: center; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); flex-shrink: 0; }
+        #main-wrapper { display: flex; gap: 15px; flex-grow: 1; min-height: 0; overflow: hidden; padding-bottom: 5px; }
+        
+        /* COMPONENTS */
+        .ps-component { flex: 1; display: flex; flex-direction: row; gap: 12px; background: var(--panel); padding: 12px; border-radius: 10px; border: 1px solid var(--border); min-width: 0; height: 100%; box-sizing: border-box; }
+        .ps-sidebar { width: 200px; display: flex; flex-direction: column; gap: 4px; height: 100%; flex-shrink: 0; }        
+        .controls-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-top: 2px; }
+        .edit-mode-container { display: flex; gap: 2px; margin-bottom: 4px; }
+        
+        /* MOVES DISPLAY */
+        .moves-display { flex-grow: 1; background: #000; border: 1px solid var(--border); padding: 8px; border-radius: 4px; font-family: monospace; font-size: 11px; overflow-y: auto; outline: none; line-height: 1.6; min-height: 0; }
+        .move-item { color: #555; margin-right: 4px; cursor: pointer; border-bottom: 1px solid transparent; }
+        .move-past { color: #40c4ff; }
+        .move-current { color: #fff; background: var(--blue); font-weight: bold; border-radius: 2px; }
+        .move-diff { color: #fff; background: #e65100 !important; font-weight: bold; }
+        .move-diff-better { color: #fff; background: var(--green) !important; font-weight: bold; }
+        .move-diff-worse { color: #fff; background: #b71c1c !important; font-weight: bold; }
+
+        /* VISUALIZER & STACKS */
+        .ps-visualizer { display: flex; gap: 8px; flex-grow: 1; height: 100%; min-width: 0; }
+        .stack-container { flex: 1; display: flex; flex-direction: column; min-width: 0; height: 100%; min-height: 0; }
+        .stack-container strong { text-align: center; font-size: 12px; padding-bottom: 5px; color: #888; }
+        .stack { border: 1px solid var(--border); flex: 1; background: #0a0a0a; border-radius: 4px; padding: 4px; box-sizing: border-box; overflow-y: auto; display: block; min-height: 0; }
+        .success-border { border-color: var(--green) !important; box-shadow: inset 0 0 10px rgba(46,125,50,0.3); }
+
+        /* ELEMENTS */
+        .element { display: flex; align-items: center; margin: 1px 0; height: 14px; border-radius: 1px; position: relative; background: #222; width: 100%; }
+        .el-label { position: absolute; left: 3px; z-index: 5; color: white; font-size: 8px; font-weight: bold; text-shadow: 1px 1px 1px #000; }
+        .el-bar { height: 100%; z-index: 1; }
+
+        /* INDICATORS & MERGE */
+        #stack-match-indicator { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; border: 1px solid #444; }
+        .match-true { background: var(--green); color: white; box-shadow: 0 0 10px rgba(46,125,50,0.5); }
+        .match-false { background: #b71c1c; color: white; opacity: 0.7; }
+        .merge-zone { display: flex; gap: 5px; border-left: 2px solid var(--accent); padding-left: 10px; margin-left: 10px; }
+        .diff-badge { background: #333; padding: 2px 6px; border-radius: 4px; font-size: 10px; color: #aaa; border: 1px solid #444; }
+        .toolbar-moves { display: flex; justify-content: flex-end; gap: 8px; }
+        .icon-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 2px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <input type="text" id="globalInput" placeholder="Number series..." style="flex-grow: 1; min-width: 200px;">
+        <input type="number" id="randomSize" value="100" style="width: 55px;">
+        <button class="btn-header" onclick="generateRandom()">Random</button>
+        <button class="btn-header" onclick="applyToAll()">Apply/Reset Stacks</button>
+        <button id="compareToggle" class="btn-header btn-mode" onclick="toggleCompareMode()">Compare: OFF</button>
+    </header>
+
+    <div id="sync-controls" style="display: none;">
+        <span style="font-size: 11px; font-weight: bold; color: var(--accent);">SYNC:</span>
+        <button class="btn-header" onclick="syncStep(-1)">PREV</button>
+        <button class="btn-header" onclick="syncStep(1)">NEXT</button>
+        <button id="btn-sync-play" class="btn-header btn-play-style" onclick="syncPlay()">PLAY ▶️</button>
+        <button id="btn-sync-stop" class="btn-header btn-stop-style" onclick="syncStop()" disabled>STOP ⏹️</button>
+
+        <button id="btn-find-main" class="btn-header" style="background: #6a1b9a" onclick="findNextDiff()">FIND NEXT DIFF 🔍</button>
+        
+        <div id="merge-tools" class="merge-zone" style="display: none;">
+            <button class="btn-merge" onclick="skipToConvergence()">SKIP DIFF ⏭️</button>
+            <div id="diff-stats" style="display: flex; gap: 5px; align-items: center; margin: 0 5px;"></div>
+            <button class="btn-merge" onclick="replaceMoveZone('A', 'B')">A → B</button>
+            <button class="btn-merge" onclick="replaceMoveZone('B', 'A')">A ← B</button>
+        </div>
+
+        <div id="stack-match-indicator" class="match-false">STACKS: DIVERGENT</div>
+    </div>
+
+    <div id="main-wrapper"></div>
+
+<script>
+class PushSwapSim {
+    constructor(containerId, id, title = "Sim") {
+        this.id = id;
+        this.a = []; this.b = [];
+        this.movesList = [];
+        this.currentIndex = 0;
+        this.initialState = "";
+        this.isPlaying = false;
+
+        this.container = document.createElement('div');
+        this.container.className = 'ps-component';
+        this.container.innerHTML = `
+            <div class="ps-sidebar">
+                <div style="font-weight: bold; font-size: 11px; color: #888; display:flex; justify-content:space-between; align-items:center;">
+                    <span>${title}</span>
+                    <div class="toolbar-moves">
+                        <button class="icon-btn btn-copy" title="Copy">📋</button>
+                        <button class="icon-btn btn-clear" title="Clear">🗑️</button>
+                    </div>
+                </div>
+                <div class="moves-display" contenteditable="true"></div>
+                <div style="font-size: 10px; display: flex; justify-content: space-between;">
+                    <span class="count-label">0 moves</span>
+                    <span style="color:#40c4ff">Idx: <span class="idx-label">0</span></span>
+                </div>
+                <div class="edit-mode-container">
+                    <button class="btn-action btn-mode-edit active" data-mode="truncate">TRUNC</button>
+                    <button class="btn-action btn-mode-edit" data-mode="insert">INS</button>
+                    <button class="btn-action btn-mode-edit" data-mode="overwrite">OVER</button>
+                </div>
+                <div class="controls-grid">
+                    ${['sa','sb','ss','pa','pb','','ra','rb','rr','rra','rrb','rrr'].map(op => 
+                        op ? `<button class="btn-action" data-op="${op}" ${op.startsWith('p')?'style="background:#1b5e20"':''}>${op}</button>` : `<span></span>`
+                    ).join('')}
+                </div>
+                <button class="btn-action btn-delete btn-stop-style" disabled>DELETE CURRENT ⌫</button>
+                <div style="display: flex; gap: 3px;">
+                    <button class="btn-action btn-prev btn-blue-style" style="flex:1">PREV</button>
+                    <button class="btn-action btn-next btn-blue-style" style="flex:1">NEXT</button>
+                </div>
+                <button class="btn-action btn-play btn-play-style">PLAY ▶️</button>
+                <button class="btn-action btn-stop btn-stop-style" disabled>STOP ⏹️</button>
+                <input type="range" class="speed-range" min="1" max="1000" value="100" dir="rtl">
+            </div>
+            <div class="ps-visualizer">
+                <div class="stack-container"><strong>A</strong><div class="stack stack-a"></div></div>
+                <div class="stack-container"><strong>B</strong><div class="stack stack-b"></div></div>
+            </div>
+        `;
+        document.getElementById(containerId).appendChild(this.container);
+
+        this.viewA = this.container.querySelector('.stack-a');
+        this.viewB = this.container.querySelector('.stack-b');
+        this.movesView = this.container.querySelector('.moves-display');
+        this.speedInput = this.container.querySelector('.speed-range');
+        
+        this.initEvents();
+        this.loadLocal();
+    }
+
+    initEvents() {
+        this.container.querySelectorAll('.controls-grid button').forEach(btn => {
+            btn.onclick = () => this.addMove(btn.dataset.op);
+        });
+        this.container.querySelector('.btn-next').onclick = () => this.step(1);
+        this.container.querySelector('.btn-prev').onclick = () => this.step(-1);
+        this.container.querySelector('.btn-play').onclick = () => this.runAuto();
+        this.container.querySelector('.btn-stop').onclick = () => this.isPlaying = false;
+        this.container.querySelector('.btn-copy').onclick = () => this.copyMoves();
+        this.container.querySelector('.btn-clear').onclick = () => this.clearMoves();
+        this.movesView.oninput = () => { this.syncMoves(); this.saveLocal(); };
+
+        // Gestion des modes
+        this.container.querySelectorAll('.btn-mode-edit').forEach(btn => {
+            btn.onclick = () => {
+                this.container.querySelectorAll('.btn-mode-edit').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.editMode = btn.dataset.mode;
+            };
+        });
+
+        // Gestion du clic sur DELETE
+        const delBtn = this.container.querySelector('.btn-delete');
+        delBtn.onclick = () => {
+            if (this.currentIndex > 0) {
+                // .splice(index, nombre_a_supprimer)
+                // On supprime l'élément juste AVANT le curseur (le dernier exécuté)
+                this.movesList.splice(this.currentIndex - 1, 1);
+                this.currentIndex--; 
+                this.render(true);
+                this.saveLocal();
+            }
+        };
+
+        this.container.querySelectorAll('.btn-mode-edit').forEach(btn => {
+            btn.onclick = () => {
+                this.container.querySelectorAll('.btn-mode-edit').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.editMode = btn.dataset.mode;
+                this.saveLocal();
+            };
+        });
+    }
+
+    // --- LOGIQUE DE CALCUL TOOLTIP ---
+    getSnapshotValue(index) {
+        const nums = this.initialState.replace(/,/g, ' ').trim().split(/\s+/).filter(x => x !== "").map(Number);
+        let sA = [...nums].reverse(); let sB = [];
+        for (let i = 0; i < index; i++) {
+            this.executePhysics(this.movesList[i], sA, sB);
+        }
+        let move = this.movesList[index].toLowerCase();
+        if (move === 'pa') return sB.length > 0 ? sB[sB.length - 1] : "B empty";
+        if (move === 'pb') return sA.length > 0 ? sA[sA.length - 1] : "A empty";
+        return null;
+    }
+
+    getBestCost(val, srcStack, targetStack, targetIsA) {
+        if (targetStack.length === 0) return { total: 0, label: "Direct push" };
+        const srcIdx = srcStack.indexOf(val);
+        const r_src = srcStack.length - 1 - srcIdx;
+        const rr_src = (srcIdx + 1) % srcStack.length;
+
+        const sTarget = [...targetStack].reverse();
+        let tIdx = 0;
+        let min = Math.min(...sTarget), max = Math.max(...sTarget);
+        if (targetIsA) {
+            if (val < min || val > max) tIdx = sTarget.indexOf(min);
+            else { for (let i = 0; i < sTarget.length; i++) {
+                if (val > sTarget[i] && val < sTarget[(i+1)%sTarget.length]) { tIdx = (i+1)%sTarget.length; break; }
+            } }
+        } else {
+            if (val < min || val > max) tIdx = sTarget.indexOf(max);
+            else { for (let i = 0; i < sTarget.length; i++) {
+                if (val < sTarget[i] && val > sTarget[(i+1)%sTarget.length]) { tIdx = (i+1)%sTarget.length; break; }
+            } }
+        }
+        const r_target = tIdx;
+        const rr_target = (sTarget.length - tIdx) % sTarget.length;
+        const ra = targetIsA ? r_target : r_src;
+        const rra = targetIsA ? rr_target : rr_src;
+        const rb = targetIsA ? r_src : r_target;
+        const rrb = targetIsA ? rr_src : rr_target;
+
+        const strategy = [
+            { total: Math.max(ra, rb), label: `RR (ra:${ra}, rb:${rb})` },
+            { total: Math.max(rra, rrb), label: `RRR (rra:${rra}, rrb:${rrb})` },
+            { total: ra + rrb, label: `Mix (ra:${ra}, rrb:${rrb})` },
+            { total: rra + rb, label: `Mix (rra:${rra}, rb:${rb})` }
+        ];
+        return strategy.reduce((prev, curr) => (curr.total < prev.total) ? curr : prev);
+    }
+
+    // --- SYSTEME ---
+    saveLocal() {
+        console.log(`Saving local: ${this.movesList} - ${this.currentIndex} - ${this.editMode}`);
+        localStorage.setItem(`ps_moves_${this.id}`, JSON.stringify(this.movesList)); 
+        localStorage.setItem(`ps_idx_${this.id}`, this.currentIndex); 
+        localStorage.setItem(`ps_edit_mode_${this.id}`, this.editMode); // Ajout
+    }
+
+    loadLocal() {
+        console.log(`Loading local: ${this.movesList} - ${this.currentIndex} - ${this.editMode}`);
+        const savedMoves = localStorage.getItem(`ps_moves_${this.id}`);
+        const savedIdx = localStorage.getItem(`ps_idx_${this.id}`);
+        const savedMode = localStorage.getItem(`ps_edit_mode_${this.id}`); // Ajout
+        
+        if (savedMoves) this.movesList = JSON.parse(savedMoves);
+        if (savedIdx) this.currentIndex = parseInt(savedIdx);
+        if (savedMode) this.editMode = savedMode; // Récupération
+    }
+    copyMoves() { navigator.clipboard.writeText(this.movesList.join(' ')); }
+    clearMoves() { this.movesList = []; this.currentIndex = 0; this.render(true); this.saveLocal(); }
+    setInitialState(str) { this.initialState = str; this.render(); }
+
+    addMove(op) {
+        if(this.isPlaying) return;
+        
+        if (this.editMode === 'truncate') {
+            // Mode actuel : Coupe tout ce qui suit
+            this.movesList = this.movesList.slice(0, this.currentIndex);
+            this.movesList.push(op);
+            this.currentIndex++;
+        } 
+        else if (this.editMode === 'insert') {
+            // Mode Insertion : Glisse l'instruction à l'index actuel
+            this.movesList.splice(this.currentIndex, 0, op);
+            this.currentIndex++;
+        } 
+        else if (this.editMode === 'overwrite') {
+            // Mode Overwrite : Remplace l'instruction suivante (ou ajoute si fin)
+            if (this.currentIndex < this.movesList.length) {
+                this.movesList[this.currentIndex] = op;
+            } else {
+                this.movesList.push(op);
+            }
+            this.currentIndex++;
+        }
+
+        this.render(true);
+        this.saveLocal();
+    }
+
+    syncMoves() {
+        const text = this.movesView.innerText.replace(/,/g, ' ');
+        this.movesList = text.trim().split(/\s+/).filter(x => x !== "");
+        if (this.currentIndex > this.movesList.length) this.currentIndex = this.movesList.length;
+        this.render(false);
+    }
+
+    step(dir) {
+        let newIdx = this.currentIndex + dir;
+        if (newIdx >= 0 && newIdx <= this.movesList.length) {
+            this.currentIndex = newIdx;
+            this.render(true);
+            this.saveLocal();
+        }
+    }
+
+    executePhysics(type, stackA, stackB) {
+        if (!type) return;
+        type = type.toLowerCase();
+        if (type === 'sa' && stackA.length > 1) [stackA[stackA.length-1], stackA[stackA.length-2]] = [stackA[stackA.length-2], stackA[stackA.length-1]];
+        else if (type === 'sb' && stackB.length > 1) [stackB[stackB.length-1], stackB[stackB.length-2]] = [stackB[stackB.length-2], stackB[stackB.length-1]];
+        else if (type === 'pa' && stackB.length > 0) stackA.push(stackB.pop());
+        else if (type === 'pb' && stackA.length > 0) stackB.push(stackA.pop());
+        else if (type === 'ra' && stackA.length > 1) stackA.unshift(stackA.pop());
+        else if (type === 'rb' && stackB.length > 1) stackB.unshift(stackB.pop());
+        else if (type === 'rra' && stackA.length > 1) stackA.push(stackA.shift());
+        else if (type === 'rrb' && stackB.length > 1) stackB.push(stackB.shift());
+        else if (type === 'rr') { this.executePhysics('ra', stackA, stackB); this.executePhysics('rb', stackA, stackB); }
+        else if (type === 'rrr') { this.executePhysics('rra', stackA, stackB); this.executePhysics('rrb', stackA, stackB); }
+        else if (type === 'ss') { this.executePhysics('sa', stackA, stackB); this.executePhysics('sb', stackA, stackB); }
+    }
+
+    render(forceRedrawList = false) {
+        const nums = this.initialState.replace(/,/g, ' ').trim().split(/\s+/).filter(x => x !== "").map(Number);
+        const maxVal = nums.length > 0 ? Math.max(...nums.map(Math.abs)) : 1;
+        this.a = [...nums].reverse(); this.b = [];
+        for (let i = 0; i < this.currentIndex; i++) this.executePhysics(this.movesList[i], this.a, this.b);
+        this.drawStack(this.a, this.viewA, true, maxVal);
+        this.drawStack(this.b, this.viewB, false, maxVal);
+        const isSorted = this.a.every((val, i) => i === 0 || val < this.a[i-1]);
+        this.container.querySelector('.ps-visualizer').classList.toggle('success-border', (this.b.length === 0 && isSorted && this.a.length > 0));
+        this.container.querySelector('.btn-delete').disabled = (this.currentIndex === 0);
+        this.updateSidebar(forceRedrawList);
+        this.container.querySelectorAll('.btn-mode-edit').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === this.editMode);
+        });
+        updateSyncStatus();
+    }
+
+    drawStack(stack, element, isA, maxVal) {
+        element.innerHTML = '';
+        // Inversion manuelle pour le rendu : le haut de la pile (fin de l'array) est affiché en premier
+        [...stack].reverse().forEach(val => {
+            const el = document.createElement('div'); el.className = 'element';
+            const width = maxVal !== 0 ? (Math.abs(val) / maxVal) * 100 : 0;
+            el.innerHTML = `<span class="el-label">${val}</span><div class="el-bar" style="width:${width}%; background:hsl(${200+(width*1.2)},70%,50%)"></div>`;
+            element.appendChild(el);
+        });
+    }
+
+    updateSidebar(force) {
+        this.container.querySelector('.idx-label').innerText = this.currentIndex;
+        this.container.querySelector('.count-label').innerText = `${this.movesList.length} moves`;
+        if (document.activeElement !== this.movesView || force) {
+            this.movesView.innerHTML = '';
+            this.movesList.forEach((m, i) => {
+                const span = document.createElement('span');
+                span.className = "move-item " + (i === this.currentIndex-1 ? "move-current" : (i < this.currentIndex ? "move-past" : ""));
+                span.innerText = m;
+                span.onclick = () => { this.currentIndex = i+1; this.render(true); this.saveLocal(); };
+                
+                // Tooltip logic
+                span.onmouseenter = () => {
+                    if (this.isPlaying) return;
+                    const mLower = m.toLowerCase();
+                    if (mLower === 'pa' || mLower === 'pb') {
+                        const val = this.getSnapshotValue(i);
+                        // Re-calculer l'état à l'instant T pour l'optimum
+                        let sA = [], sB = []; 
+                        const nums = this.initialState.replace(/,/g, ' ').trim().split(/\s+/).filter(x => x !== "").map(Number);
+                        sA = [...nums].reverse();
+                        for (let j = 0; j < i; j++) this.executePhysics(this.movesList[j], sA, sB);
+                        const opt = this.getBestCost(val, mLower==='pa'?sB:sA, mLower==='pa'?sA:sB, mLower==='pa');
+                        span.title = `Pushed value: ${val}\nTheoretical optimum: ${opt.label} (Total: ${opt.total})`;
+                    }
+                };
+                this.movesView.appendChild(span);
+            });
+            const current = this.movesView.querySelector('.move-current');
+            if (current) current.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+        }
+    }
+
+    async runAuto() {
+        this.isPlaying = true;
+        this.container.querySelector('.btn-play').disabled = true;
+        this.container.querySelector('.btn-stop').disabled = false;
+        while (this.currentIndex < this.movesList.length && this.isPlaying) {
+            this.currentIndex++; this.render(true); this.saveLocal();
+            await new Promise(r => setTimeout(r, parseInt(this.speedInput.value)));
+        }
+        this.isPlaying = false;
+        this.container.querySelector('.btn-play').disabled = false;
+        this.container.querySelector('.btn-stop').disabled = true;
+    }
+}
+
+// GESTION GLOBALE
+let compareMode = localStorage.getItem('ps_compare') === 'true';
+const sims = [];
+
+function initApp() {
+    const wrapper = document.getElementById('main-wrapper');
+    wrapper.innerHTML = ''; sims.length = 0;
+    sims.push(new PushSwapSim('main-wrapper', 'left', 'VERSION A'));
+    if (compareMode) sims.push(new PushSwapSim('main-wrapper', 'right', 'VERSION B'));
+    document.getElementById('sync-controls').style.display = compareMode ? 'flex' : 'none';
+    const savedStack = localStorage.getItem('ps_global_stack') || "";
+    document.getElementById('globalInput').value = savedStack;
+    const btn = document.getElementById('compareToggle');
+    btn.innerText = `Compare: ${compareMode ? 'ON' : 'OFF'}`;
+    btn.classList.toggle('active', compareMode);
+    applyToAll();
+}
+
+function toggleCompareMode() { compareMode = !compareMode; localStorage.setItem('ps_compare', compareMode); initApp(); }
+function generateRandom() {
+    const size = parseInt(document.getElementById('randomSize').value) || 100;
+    const arr = Array.from({length: size}, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+    document.getElementById('globalInput').value = arr.join(' ');
+    applyToAll();
+}
+function applyToAll() {
+    const val = document.getElementById('globalInput').value;
+    localStorage.setItem('ps_global_stack', val);
+    sims.forEach(sim => { sim.currentIndex = 0; sim.setInitialState(val); });
+}
+function syncStep(dir) { sims.forEach(s => s.step(dir)); }
+function updatePlayButtons(isPlaying) {
+    // Toolbar Globale
+    const syncPlayBtn = document.getElementById('btn-sync-play');
+    const syncStopBtn = document.getElementById('btn-sync-stop');
+    if (syncPlayBtn) syncPlayBtn.disabled = isPlaying;
+    if (syncStopBtn) syncStopBtn.disabled = !isPlaying;
+    
+    // On peut aussi griser les Prev/Next de la toolbar
+    document.querySelectorAll('#sync-controls .btn-header').forEach(btn => {
+        if (btn.innerText.includes('PREV') || btn.innerText.includes('NEXT')) btn.disabled = isPlaying;
+    });
+
+    // Composants (Sidebars)
+    sims.forEach(s => {
+        s.container.querySelector('.btn-play').disabled = isPlaying;
+        s.container.querySelector('.btn-stop').disabled = !isPlaying;
+        // Griser la navigation individuelle pendant la lecture
+        s.container.querySelector('.btn-prev').disabled = isPlaying;
+        s.container.querySelector('.btn-next').disabled = isPlaying;
+    });
+}
+
+function syncStop() {
+    sims.forEach(s => s.isPlaying = false);
+    updatePlayButtons(false);
+}
+
+async function syncPlay() {
+    updatePlayButtons(true);
+    sims.forEach(s => s.isPlaying = true);
+
+    while (sims.some(s => s.currentIndex < s.movesList.length) && sims.every(s => s.isPlaying)) {
+        let moved = false;
+        sims.forEach(s => { 
+            if (s.currentIndex < s.movesList.length) {
+                s.currentIndex++; 
+                s.render(true); 
+                s.saveLocal();
+                moved = true;
+            }
+        });
+        if (!moved) break;
+        await new Promise(r => setTimeout(r, parseInt(sims[0].speedInput.value)));
+    }
+    
+    syncStop(); // Remet les boutons dans le bon état à la fin
+}
+
+let lastDiff = { offA: -1, offB: -1, convA: -1, convB: -1 };
+
+function findNextDiff() {
+    if (sims.length < 2) return;
+    const s1 = sims[0], s2 = sims[1];
+    document.querySelectorAll('.move-diff').forEach(el => el.classList.remove('move-diff'));
+
+    const getStateAt = (sim, index) => {
+        let a = [...sim.initialState.replace(/,/g, ' ').trim().split(/\s+/).filter(x => x !== "").map(Number)].reverse();
+        let b = [];
+        const limit = Math.min(index, sim.movesList.length);
+        for (let i = 0; i < limit; i++) sim.executePhysics(sim.movesList[i], a, b);
+        return JSON.stringify({a, b});
+    };
+
+    let offA = s1.currentIndex;
+    let offB = s2.currentIndex;
+    let foundDivergence = false;
+
+    // 1. DÉTECTION : Prochaine instruction différente
+    while (offA < s1.movesList.length || offB < s2.movesList.length) {
+        if (s1.movesList[offA] !== s2.movesList[offB]) {
+            foundDivergence = true;
+            break;
+        }
+        offA++; offB++;
+    }
+
+    if (!foundDivergence) {
+        alert("End of list reached without divergence.");
+        return;
+    }
+
+    // 2. CONVERGENCE
+    let convA = -1, convB = -1;
+    let searchRange = 200; 
+    outer: for (let i = 1; i <= searchRange; i++) {
+        for (let j = 1; j <= searchRange; j++) {
+            if (getStateAt(s1, offA + i) === getStateAt(s2, offB + j)) {
+                convA = offA + i; convB = offB + j;
+                break outer;
+            }
+        }
+    }
+
+    // Sauvegarde pour les outils de merge
+    lastDiff = { offA, offB, convA, convB };
+    
+    s1.currentIndex = offA; s2.currentIndex = offB;
+    s1.render(true); s2.render(true);
+
+    const endA = (convA !== -1) ? convA : s1.movesList.length;
+    const endB = (convB !== -1) ? convB : s2.movesList.length;
+
+    applyHighlight(offA, endA, offB, endB);
+    document.getElementById('merge-tools').style.display = 'flex';
+}
+
+function applyHighlight(startA, endA, startB, endB) {
+    const lenA = endA - startA;
+    const lenB = endB - startB;
+    
+    // Mise à jour de la toolbar avec les longueurs
+    const stats = document.getElementById('diff-stats');
+    stats.innerHTML = `<span class="diff-badge">A: ${lenA}</span> <span style="font-size:10px">vs</span> <span class="diff-badge">B: ${lenB}</span>`;
+
+    const spans1 = sims[0].movesView.querySelectorAll('.move-item');
+    const spans2 = sims[1].movesView.querySelectorAll('.move-item');
+
+    // Détermination des classes
+    let classA = "move-diff", classB = "move-diff";
+    if (lenA < lenB) { classA = "move-diff-better"; classB = "move-diff-worse"; }
+    else if (lenB < lenA) { classA = "move-diff-worse"; classB = "move-diff-better"; }
+
+    // Application
+    for (let k = startA; k < endA; k++) if(spans1[k]) spans1[k].classList.add(classA);
+    for (let k = startB; k < endB; k++) if(spans2[k]) spans2[k].classList.add(classB);
+}
+
+function skipToConvergence() {
+    if (lastDiff.convA === -1 || lastDiff.convB === -1) {
+        alert("No convergence point found.");
+        return;
+    }
+    sims[0].currentIndex = lastDiff.convA;
+    sims[1].currentIndex = lastDiff.convB;
+    sims[0].render(true); sims[1].render(true);
+    document.getElementById('merge-tools').style.display = 'none';
+}
+
+function replaceMoveZone(fromLabel, toLabel) {
+    const fromSim = fromLabel === 'A' ? sims[0] : sims[1];
+    const toSim = toLabel === 'A' ? sims[0] : sims[1];
+    
+    const startFrom = fromLabel === 'A' ? lastDiff.offA : lastDiff.offB;
+    const endFrom = fromLabel === 'A' ? lastDiff.convA : lastDiff.convB;
+    const startTo = toLabel === 'A' ? lastDiff.offA : lastDiff.offB;
+    const endTo = toLabel === 'A' ? lastDiff.convA : lastDiff.convB;
+
+    if (endFrom === -1 || endTo === -1) {
+        return alert("Convergence point not defined for replacement.");
+    }
+
+    const newMoves = fromSim.movesList.slice(startFrom, endFrom);
+    
+    // Perform the surgical replacement in the instruction list
+    toSim.movesList.splice(startTo, endTo - startTo, ...newMoves);
+    
+    toSim.render(true);
+    toSim.saveLocal();
+    
+    document.getElementById('merge-tools').style.display = 'none';
+    updateSyncStatus();
+}
+
+function updateSyncStatus() {
+    const indicator = document.getElementById('stack-match-indicator');
+    const btnFind = document.getElementById('btn-find-main');
+    if (!indicator || sims.length < 2) return;
+    
+    const isMatch = JSON.stringify(sims[0].a) === JSON.stringify(sims[1].a) && 
+                    JSON.stringify(sims[0].b) === JSON.stringify(sims[1].b);
+    
+    if (isMatch) {
+        indicator.innerText = "STACKS IDENTICAL";
+        indicator.className = "match-true";
+        btnFind.innerText = "FIND NEXT DIFF 🔍";
+        btnFind.onclick = findNextDiff;
+        btnFind.disabled = false;
+        // On cache les outils de merge si on est de nouveau identique
+        document.getElementById('merge-tools').style.display = 'none';
+    } else {
+        indicator.innerText = "STACKS DIVERGENT";
+        indicator.className = "match-false";
+        btnFind.innerText = "FIND CONVERGENCE 🎯";
+        btnFind.onclick = findNextConvergenceOnly;
+        btnFind.disabled = false;
+    }
+}
+
+function findNextConvergenceOnly() {
+    // Cas où on est déjà en DIFF, on cherche juste le prochain point commun
+    const s1 = sims[0], s2 = sims[1];
+    let offA = s1.currentIndex;
+    let offB = s2.currentIndex;
+    let convA = -1, convB = -1;
+
+    outer: for (let i = 0; i <= 200; i++) {
+        for (let j = 0; j <= 200; j++) {
+            if (i === 0 && j === 0) continue;
+            let a = [...s1.initialState.replace(/,/g, ' ').trim().split(/\s+/).filter(x => x !== "").map(Number)].reverse();
+            let b = [];
+            for (let k = 0; k < offA + i; k++) s1.executePhysics(s1.movesList[k], a, b);
+            let stateA = JSON.stringify({a, b});
+
+            let a2 = [...s2.initialState.replace(/,/g, ' ').trim().split(/\s+/).filter(x => x !== "").map(Number)].reverse();
+            let b2 = [];
+            for (let k = 0; k < offB + j; k++) s2.executePhysics(s2.movesList[k], a2, b2);
+            let stateB = JSON.stringify({a: a2, b: b2});
+
+            if (stateA === stateB) {
+                convA = offA + i; convB = offB + j;
+                break outer;
+            }
+        }
+    }
+
+    if (convA !== -1) {
+        lastDiff = { offA, offB, convA, convB };
+        applyHighlight(offA, convA, offB, convB);
+        document.getElementById('merge-tools').style.display = 'flex';
+    } else {
+        alert("No convergence found within the next 200 moves.");
+    }
+}
+
+window.onload = initApp;
+</script>
+</body>
+</html>

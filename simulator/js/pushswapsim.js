@@ -1,14 +1,14 @@
 import { TwoStacks, Move } from './stack.js';
-
+import { TwoStacksView } from './twostacksview.js';
+import { ListView } from './listView.js';
 
 export class PushSwapSim {
     static #VALID_MOVES = new Set(Object.values(Move));
     
-    #currentIndex = 0;
     #isPlaying = false;
-    #movesList = [];
     #numbers = [];
-    #stacks = new TwoStacks([],[]);
+    #stacksView;
+    #movesView;
 
     constructor(containerId, id, title = "Sim", onStateChange = null) {
         this.id = id;
@@ -49,20 +49,34 @@ export class PushSwapSim {
                 <button class="btn-action btn-stop btn-stop-style" disabled>STOP ⏹️</button>
                 <input type="range" class="speed-range" min="1" max="1000" value="100" dir="rtl">
             </div>
-            <div class="ps-visualizer">
-                <div class="stack-container"><strong>A</strong><div class="stack stack-a"></div></div>
-                <div class="stack-container"><strong>B</strong><div class="stack stack-b"></div></div>
-            </div>
+            <div class="ps-visualizer-anchor"></div>
         `;
         document.getElementById(containerId).appendChild(this.container);
 
-        this.viewA = this.container.querySelector('.stack-a');
-        this.viewB = this.container.querySelector('.stack-b');
+        const anchor = this.container.querySelector('.ps-visualizer-anchor');
+        this.#stacksView = new TwoStacksView(anchor);
+
         this.movesView = this.container.querySelector('.moves-display');
+        this.#movesView = new ListView(this.movesView, {
+            onItemClick: (move, i) => this.setIndex(i + 1),
+            onItemMouseEnter: (move, i, el) => {
+                if (this.#isPlaying) return;
+                if (move === 'pa' || move === 'pb') {
+                    const val = this.#getSnapshotValue(i);
+                    el.title = `Pushed value: ${val}`;
+                }
+            }
+        });
         this.speedInput = this.container.querySelector('.speed-range');
         
         this.#initEvents();
         this.#loadLocal();
+        
+        // Initialize stacks if no initial state was set
+        if (this.#numbers.length === 0) {
+            this.#numbers = [];
+        }
+        this.#rebuildStacks();
     }
 
     #initEvents() {
@@ -77,7 +91,6 @@ export class PushSwapSim {
         this.container.querySelector('.btn-clear').onclick = () => this.#clearMoves();
         this.movesView.oninput = () => { this.#syncMoves(); this.#saveLocal(); };
 
-        // Gestion des modes (Nettoyé : une seule fois suffit)
         this.container.querySelectorAll('.btn-mode-edit').forEach(btn => {
             btn.onclick = () => {
                 this.editMode = btn.dataset.mode;
@@ -88,69 +101,87 @@ export class PushSwapSim {
 
         const delBtn = this.container.querySelector('.btn-delete');
         delBtn.onclick = () => {
-            if (this.#currentIndex > 0) {
-                this.#movesList.splice(this.#currentIndex - 1, 1);
-                this.setIndex(this.#currentIndex - 1);
+            const index = this.#movesView.getIndex();
+            if (index > 0) {
+                this.#movesView.update(this.#movesView.getList().splice(index - 1, 1), index - 1);
             }
         };
     }
 
-    getIndex() { return this.#currentIndex; }
+    getIndex() { return this.#movesView.getIndex(); }
 
     setIndex(idx) {
-        this.#currentIndex = Math.max(0, Math.min(idx, this.#movesList.length));
+        let futureIndex = Math.max(0, Math.min(idx, this.#movesView.getList().length));
+        const oldIndex = this.#movesView.getIndex();
+        if (futureIndex == this.#movesView.getIndex()) return;
+        this.#movesView.setIndex(futureIndex);
         this.#saveLocal();
+        
+        // Use optimized applyMove for adjacent steps
+        if (Math.abs(oldIndex - futureIndex) === 1) {
+            // Use incremental moves for adjacent steps
+            this.#applyIncrementalMoves(oldIndex);
+        } else {
+            // For non-adjacent changes, rebuild stacks completely
+            this.#rebuildStacks();
+        }
+        
+        // Render sidebar only (stacks are already updated in TwoStacksView)
         this.#render(true);
     }
 
-    getMovesList() { return [...this.#movesList]; }
+    #applyIncrementalMoves(oldIndex) {
+        //FIXME Undo seems buggy
+        const newIndex = this.#movesView.getIndex();
+        const direction = newIndex > oldIndex ? 1 : -1;
+        const start = direction > 0 ? oldIndex : newIndex;
+        const end = direction > 0 ? newIndex : oldIndex;
+        
+        for (let i = start; i < end; i++) {
+            const moveIndex = direction > 0 ? i : i - 1;
+            if (moveIndex >= 0 && moveIndex < this.getMoveListSize()) {
+                this.#stacksView.applyMove(this.getMoveAt(moveIndex));
+            }
+        }
+    }
 
-    getMoveListSize() { return this.#movesList.length; }
+    getMovesList() { return [...this.#movesView.getList()]; }
 
-    getMoveAt(index) { return this.#movesList[index].toLowerCase(); }
+    getMoveListSize() { return this.#movesView.getList().length; }
+
+    getMoveAt(index) { return this.#movesView.getList()[index].toLowerCase(); }
 
     setMovesList(newList) {
-        // 1. Validation du type
-        if (!Array.isArray(newList)) {
-            throw new TypeError(`[PushSwapSim] Expected an Array for movesList, got: ${typeof newList}`);
-        }
-
-        // 2. Validation du contenu
+        if (!Array.isArray(newList)) throw new TypeError(`Expected Array, got: ${typeof newList}`);
         const invalidOp = newList.find(op => !PushSwapSim.#VALID_MOVES.has(op.toLowerCase()));        
-        if (invalidOp) {
-            throw new Error(`[PushSwapSim] Invalid move detected: "${invalidOp}". Instruction rejected.`);
-        }
+        if (invalidOp) throw new Error(`Invalid move: "${invalidOp}"`);
 
-        this.#movesList = [...newList]; 
-        
-        // Sécurité : si la nouvelle liste est plus courte que l'index actuel, on recule
-        if (this.#currentIndex > this.#movesList.length) {
-            this.#currentIndex = this.#movesList.length;
-        }
+        this.#movesView.update([...newList], 0); 
+
+        // Rebuild stacks in TwoStacksView
+        this.#rebuildStacks();
 
         this.#saveLocal();
         this.#render(true);
     }
     
-    getStacks() { return this.#stacks; }
+    // On expose les stacks de la vue si besoin
+    getStacks() { return this.#stacksView.getStacks(); }
 
-    // --- LOGIQUE DE CALCUL TOOLTIP ---
     #getSnapshotValue(index) {
         const nums = this.#numbers;
         let stacks = new TwoStacks(nums, []);
         let move = this.getMoveAt(index);
         if (move !== 'pa' && move !== 'pb') return null;
-        for (let i = 0; i < index; i++) {
-            stacks.applyMove(this.getMoveAt(i));
-        }
+        for (let i = 0; i < index; i++) stacks.applyMove(this.getMoveAt(i));
+        
         let stack = move === 'pa' ? stacks.getStackB() : stacks.getStackA();
         return stack.getSize() > 0 ? stack.top() : "empty";
     }
 
-    // --- SYSTEME ---
     #saveLocal() {
-        localStorage.setItem(`ps_moves_${this.id}`, JSON.stringify(this.#movesList)); 
-        localStorage.setItem(`ps_idx_${this.id}`, this.#currentIndex); 
+        localStorage.setItem(`ps_moves_${this.id}`, JSON.stringify(this.#movesView.getList())); 
+        localStorage.setItem(`ps_idx_${this.id}`, this.#movesView.getIndex()); 
         localStorage.setItem(`ps_edit_mode_${this.id}`, this.editMode);
     }
 
@@ -158,62 +189,66 @@ export class PushSwapSim {
         const savedMoves = localStorage.getItem(`ps_moves_${this.id}`);
         const savedIdx = localStorage.getItem(`ps_idx_${this.id}`);
         const savedMode = localStorage.getItem(`ps_edit_mode_${this.id}`);
-        
-        if (savedMoves) this.#movesList = JSON.parse(savedMoves);
-        if (savedIdx) this.#currentIndex = Number.parseInt(savedIdx);
-        if (savedMode) this.editMode = savedMode;
-        else this.editMode = 'truncate';
+        const idx = savedIdx ? Number.parseInt(savedIdx) : 0;
+        if (savedMoves) this.#movesView.update(JSON.parse(savedMoves), idx);
+        this.editMode = savedMode || 'truncate';
     }
-    #copyMoves() { navigator.clipboard.writeText(this.#movesList.join(' ')); }
-    #clearMoves() { this.#movesList = []; this.#currentIndex = 0; this.#render(true); this.#saveLocal(); }
+    #copyMoves() { navigator.clipboard.writeText(this.getMovesList().join(' ')); }
+    #clearMoves() { 
+        this.#movesView.update([], 0); 
+        this.#rebuildStacks();
+        this.#render(true); 
+        this.#saveLocal(); 
+    }
 
     getInitialState() { return [...this.#numbers]; }
-
     setInitialState(numbers) {
-        if (!numbers || !Array.isArray(numbers)) {
-            throw new Error('Invalid initial state');
-        }
+        if (!numbers || !Array.isArray(numbers)) throw new Error('Invalid initial state');
         this.#numbers = [...numbers];
-        this.#render();
+        
+        // Initialize TwoStacksView with the initial state
+        const stacks = new TwoStacks(numbers, []);
+        this.#stacksView.setStacks(stacks);
+        
+        // Reset to beginning and render sidebar
+        this.#movesView.setIndex(0);
+        this.#saveLocal();
+        this.#render(true);
     }
 
     #addMove(op) {
         if(this.#isPlaying) return;
-        
+        const idx = this.#movesView.getIndex();
+        let list = this.#movesView.getList();
         if (this.editMode === 'truncate') {
-            // Mode actuel : Coupe tout ce qui suit
-            this.#movesList = this.#movesList.slice(0, this.#currentIndex);
-            this.#movesList.push(op);
-            this.#currentIndex++;
-        } 
-        else if (this.editMode === 'insert') {
-            // Mode Insertion : Glisse l'instruction à l'index actuel
-            this.#movesList.splice(this.#currentIndex, 0, op);
-            this.#currentIndex++;
-        } 
-        else if (this.editMode === 'overwrite') {
-            // Mode Overwrite : Remplace l'instruction suivante (ou ajoute si fin)
-            if (this.#currentIndex < this.#movesList.length) {
-                this.#movesList[this.#currentIndex] = op;
-            } else {
-                this.#movesList.push(op);
-            }
-            this.#currentIndex++;
+            list = list.slice(0, idx);
+            list.push(op);
+            this.#movesView.update(list, idx + 1);
+        } else if (this.editMode === 'insert') {
+            list = list.splice(idx, 0, op);
+            this.#movesView.update(list, idx + 1);
+        } else if (this.editMode === 'overwrite') {
+            if (idx < list.length) list[idx] = op;
+            else list.push(op);
+            this.#movesView.update(list, idx + 1);
         }
-
         this.#render(true);
         this.#saveLocal();
     }
 
     #syncMoves() {
         const text = this.movesView.innerText.replace(/,/g, ' ');
-        this.#movesList = text.trim().split(/\s+/).filter(x => x !== "");
-        if (this.#currentIndex > this.getMoveListSize()) this.#currentIndex = this.getMoveListSize().length;
+        let moves = text.trim().split(/\s+/).filter(x => x !== "");
+        let idx = this.#movesView.getIndex();
+
+        if (idx > moves.length) idx = moves.length;
+        this.#movesView.update(moves, idx);
         this.#render(false);
     }
 
     step(dir) {
-        let newIdx = this.#currentIndex + dir;
+        //TODO Is this still used ?
+        let newIdx = this.#movesView.getIndex() + dir;
         if (newIdx >= 0 && newIdx <= this.getMoveListSize()) {
             this.setIndex(newIdx);
             return true;
@@ -221,24 +256,27 @@ export class PushSwapSim {
         return false;
     }
 
-    #render(forceRedrawList = false) {
-        const nums = this.#numbers;
-        const maxVal = nums.length > 0 ? Math.max(...nums.map(Math.abs)) : 1;
-        this.#stacks = new TwoStacks(nums, []);
-        for (let i = 0; i < this.#currentIndex; i++) this.#stacks.applyMove(this.getMoveAt(i));
-        this.#drawStack(this.#stacks.getStackA(), this.viewA, maxVal);
-        this.#drawStack(this.#stacks.getStackB(), this.viewB, maxVal);
-        this.container.querySelector('.ps-visualizer').classList.toggle('success-border', this.#stacks.isSorted());
+    #rebuildStacks() {
+        const stacks = new TwoStacks(this.#numbers, []);
+        for (let i = 0; i < this.#movesView.getIndex(); i++) {
+            stacks.applyMove(this.getMoveAt(i));
+        }
+        this.#stacksView.setStacks(stacks);
+    }
 
+    #render(forceRedrawList = false) {
+        // 1. STACKS ARE NOW MANAGED BY TwoStacksView - NO CREATION NEEDED HERE
+        const stacks = this.#stacksView.getStacks();
+        
+        // 2. SIDEBAR Update
         this.container.querySelectorAll('.btn-mode-edit').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.mode === this.editMode);
         });
 
-        // --- LOGIQUE DE GRISAGE ---
         const noMoves = this.getMoveListSize() === 0;
-        const noStacks = this.#stacks.isEmpty();
-        const isAtEnd = this.#currentIndex === this.getMoveListSize();
-        const isAtStart = this.#currentIndex === 0;
+        const noStacks = stacks.isEmpty();
+        const isAtEnd = this.#movesView.getIndex() === this.getMoveListSize();
+        const isAtStart = this.#movesView.getIndex() === 0;
         const blockAll = this.#isPlaying || noStacks;
 
         this.container.querySelector('.btn-play').disabled = blockAll || noMoves || isAtEnd;
@@ -248,21 +286,17 @@ export class PushSwapSim {
 
         this.container.querySelectorAll('.controls-grid button').forEach(btn => {
             const op = btn.dataset.op;
-            if (!op) return; // Ignore les spans vides
-
+            if (!op) return;
             let isDisabled = blockAll;
-
-            // Logique métier : on grise si l'action est impossible
             if (!isDisabled) {
-                let aSize = this.#stacks.getStackA().getSize();
-                let bSize = this.#stacks.getStackB().getSize();
+                let aSize = stacks.getStackA().getSize();
+                let bSize = stacks.getStackB().getSize();
                 if ([Move.SA, Move.RA, Move.RRA].includes(op)) isDisabled = aSize < 2;
                 else if ([Move.SB, Move.RB, Move.RRB].includes(op)) isDisabled = bSize < 2;
                 else if (op === Move.PA) isDisabled = bSize === 0;
                 else if (op === Move.PB) isDisabled = aSize === 0;
                 else if ([Move.SS, Move.RR, Move.RRR].includes(op)) isDisabled = (aSize < 2 && bSize < 2);
             }
-
             btn.disabled = isDisabled;
         });
 
@@ -270,60 +304,22 @@ export class PushSwapSim {
         this.container.querySelectorAll('.btn-mode-edit').forEach(btn => btn.disabled = blockAll);
 
         this.#updateSidebar(forceRedrawList);
-        
         if (this.onStateChange) this.onStateChange();
     }
 
-    #drawStack(stack, element, maxVal) {
-        element.innerHTML = '';
-        // Inversion manuelle pour le rendu : le haut de la pile (fin de l'array) est affiché en premier
-        for (const val of stack.iterator()) {
-            const el = document.createElement('div'); el.className = 'element';
-            const width = maxVal !== 0 ? (Math.abs(val) / maxVal) * 100 : 0;
-            el.innerHTML = `<span class="el-label">${val}</span><div class="el-bar" style="width:${width}%; background:hsl(${200+(width*1.2)},70%,50%)"></div>`;
-            element.appendChild(el);
-        }
-    }
-
     #updateSidebar(force) {
-        this.container.querySelector('.idx-label').innerText = this.#currentIndex;
-        this.container.querySelector('.count-label').innerText = `${this.#movesList.length} moves`;
-        if (document.activeElement !== this.movesView || force) {
-            this.movesView.innerHTML = '';
-            this.#movesList.forEach((m, i) => {
-                const span = document.createElement('span');
-                span.className = "move-item " + (i === this.#currentIndex-1 ? "move-current" : (i < this.#currentIndex ? "move-past" : ""));
-                span.innerText = m;
-                span.onclick = () => { this.setIndex(i+1); };
-                
-                // Tooltip logic
-                span.onmouseenter = () => {
-                    if (this.#isPlaying) return;
-                    const mLower = m.toLowerCase();
-                    if (mLower === 'pa' || mLower === 'pb') {
-                        const val = this.#getSnapshotValue(i);
-                        // Re-calculer l'état à l'instant T pour l'optimum
-                        let stacks = new TwoStacks(this.#numbers, []); 
-                        for (let j = 0; j < i; j++) stacks.applyMove(this.getMoveAt(j));
-                        span.title = `Pushed value: ${val}`;
-                    }
-                };
-                this.movesView.appendChild(span);
-            });
-            const current = this.movesView.querySelector('.move-current');
-            if (current) current.scrollIntoView({ behavior: 'auto', block: 'nearest' });
-        }
+        this.container.querySelector('.idx-label').innerText = this.#movesView.getIndex();
+        this.container.querySelector('.count-label').innerText = `${this.#movesView.getList().length} moves`;
     }
 
     async #runAuto() {
+        console.log("runAuto", Number.parseInt(this.speedInput.value)); //TODO
         this.setPlaying(true);
-        
-        while (this.#currentIndex < this.getMoveListSize() && this.#isPlaying) {
+        while (this.#movesView.getIndex() < this.getMoveListSize() && this.#isPlaying) {
             const speed = Number.parseInt(this.speedInput.value);
-            this.setIndex(this.#currentIndex + 1); 
+            this.setIndex(this.#movesView.getIndex() + 1); 
             await new Promise(r => setTimeout(r, speed));
         }
-        
         this.setPlaying(false);
     }
 
