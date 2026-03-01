@@ -209,7 +209,6 @@ public class LisButterfly extends AbstractButterfly {
                 }
                 // Check if sb is better than rb
                 int nextToBePushed = getNextValueInBToBePushed(target);
-                boolean sbBetter = false;
                 if (stackB.first() == nextToBePushed || findPositionInB(nextToBePushed)>stackB.size() / 2) {
                 	// If next number of B to be pushed is the current first or at the bottom of the list, sb is better
                     delayed.sb();

@@ -3,22 +3,22 @@ package com.fathzer.pushswap;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-class StackTest extends IStackTest {
+class ReversedStackTest extends IStackTest{
     
     @Override
     protected IStack createStack() {
-        return new Stack();
+        return new ReversedStack();
     }
 
     @Override
     protected IStack createStack(int[] elements) {
-        return new Stack(elements);
+        return new ReversedStack(elements);
     }
     
     @Test
     void testFindTargetPositionSortedStack() {
         // Test with sorted stack: [1, 3, 5]
-        Stack sortedStack = new Stack(new int[]{1, 3, 5});
+    	ReversedStack sortedStack = new ReversedStack(new int[]{1, 3, 5});
         
         assertEquals(0, sortedStack.findTargetPosition(0), "0 should go before 1");
         assertEquals(1, sortedStack.findTargetPosition(2), "2 should go before 3");
@@ -29,7 +29,7 @@ class StackTest extends IStackTest {
     @Test
     void testFindTargetPositionRotatedStack() {
         // Test with rotated stack: [3, 5, 1]
-        Stack rotatedStack = new Stack(new int[]{3, 5, 1});
+    	ReversedStack rotatedStack = new ReversedStack(new int[]{3, 5, 1});
         
         assertEquals(2, rotatedStack.findTargetPosition(0), "0 should go before 1");
         assertEquals(0, rotatedStack.findTargetPosition(2), "3 should go before 4");
@@ -39,7 +39,7 @@ class StackTest extends IStackTest {
     
     @Test
     void testFindTargetPositionSingleElement() {
-        Stack singleStack = new Stack(new int[]{5});
+    	ReversedStack singleStack = new ReversedStack(new int[]{5});
         
         assertEquals(0, singleStack.findTargetPosition(3), "3 should go before 5");
         assertEquals(0, singleStack.findTargetPosition(4), "4 should go before 5");
@@ -48,7 +48,7 @@ class StackTest extends IStackTest {
     
     @Test
     void testFindTargetPositionEmpty() {
-        Stack emptyStack = new Stack();
+    	ReversedStack emptyStack = new ReversedStack();
         assertEquals(0, emptyStack.findTargetPosition(5));
     }
 }
