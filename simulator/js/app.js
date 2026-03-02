@@ -85,9 +85,10 @@ export class PushSwapApp {
         const val = document.getElementById('globalInput').value;
         localStorage.setItem('ps_global_stack', val);
         const numbers = val.replace(/,/g, ' ').trim().split(/\s+/).filter(x => x !== "").map(Number);
+        document.getElementById('randomSize').value = numbers.length;
         this.#sims.forEach(sim => { 
             sim.setInitialState(numbers); 
-            sim.setIndex(0); 
+            sim.setIndex(-1); 
         });
     }
 

@@ -5,18 +5,21 @@ import { ListView } from './listView.js';
 export class PushSwapSim {
     static #VALID_MOVES = new Set(Object.values(Move));
     
+    #container;
+    #id;
+    #onStateChange;
     #isPlaying = false;
     #numbers = [];
     #stacksView;
     #movesView;
 
     constructor(containerId, id, title = "Sim", onStateChange = null) {
-        this.id = id;
-        this.onStateChange = onStateChange;
+        this.#id = id;
+        this.#onStateChange = onStateChange;
 
-        this.container = document.createElement('div');
-        this.container.className = 'ps-component';
-        this.container.innerHTML = `
+        this.#container = document.createElement('div');
+        this.#container.className = 'ps-component';
+        this.#container.innerHTML = `
             <div class="ps-sidebar">
                 <div style="font-weight: bold; font-size: 11px; color: #888; display:flex; justify-content:space-between; align-items:center;">
                     <span>${title}</span>
@@ -51,14 +54,14 @@ export class PushSwapSim {
             </div>
             <div class="ps-visualizer-anchor"></div>
         `;
-        document.getElementById(containerId).appendChild(this.container);
+        document.getElementById(containerId).appendChild(this.#container);
 
-        const anchor = this.container.querySelector('.ps-visualizer-anchor');
+        const anchor = this.#container.querySelector('.ps-visualizer-anchor');
         this.#stacksView = new TwoStacksView(anchor);
 
-        const movesView = this.container.querySelector('.moves-display');
+        const movesView = this.#container.querySelector('.moves-display');
         this.#movesView = new ListView(movesView, {
-            onItemClick: (move, i) => this.setIndex(i + 1),
+            onItemClick: (move, i) => this.setIndex(i),
             onItemMouseEnter: (move, i, el) => {
                 if (this.#isPlaying) return;
                 if (move === 'pa' || move === 'pb') {
@@ -67,7 +70,7 @@ export class PushSwapSim {
                 }
             }
         });
-        this.speedInput = this.container.querySelector('.speed-range');
+        this.speedInput = this.#container.querySelector('.speed-range');
         
         this.#initEvents();
         this.#loadLocal();
@@ -76,22 +79,21 @@ export class PushSwapSim {
         if (this.#numbers.length === 0) {
             this.#numbers = [];
         }
-        this.#rebuildStacks();
     }
 
     #initEvents() {
-        this.container.querySelectorAll('.controls-grid button').forEach(btn => {
+        this.#container.querySelectorAll('.controls-grid button').forEach(btn => {
             btn.onclick = () => this.#addMove(btn.dataset.op);
         });
-        this.container.querySelector('.btn-next').onclick = () => this.step(1);
-        this.container.querySelector('.btn-prev').onclick = () => this.step(-1);
-        this.container.querySelector('.btn-play').onclick = () => this.#runAuto();
-        this.container.querySelector('.btn-stop').onclick = () => this.#isPlaying = false;
-        this.container.querySelector('.btn-copy').onclick = () => this.#copyMoves();
-        this.container.querySelector('.btn-clear').onclick = () => this.#clearMoves();
-        this.container.querySelector('.moves-display').oninput = () => { this.#syncMoves(); this.#saveLocal(); };
+        this.#container.querySelector('.btn-next').onclick = () => this.step(1);
+        this.#container.querySelector('.btn-prev').onclick = () => this.step(-1);
+        this.#container.querySelector('.btn-play').onclick = () => this.#runAuto();
+        this.#container.querySelector('.btn-stop').onclick = () => this.#isPlaying = false;
+        this.#container.querySelector('.btn-copy').onclick = () => this.#copyMoves();
+        this.#container.querySelector('.btn-clear').onclick = () => this.#clearMoves();
+        this.#container.querySelector('.moves-display').oninput = () => { this.#syncMoves(); this.#saveLocal(); };
 
-        this.container.querySelectorAll('.btn-mode-edit').forEach(btn => {
+        this.#container.querySelectorAll('.btn-mode-edit').forEach(btn => {
             btn.onclick = () => {
                 this.editMode = btn.dataset.mode;
                 this.#saveLocal();
@@ -99,21 +101,15 @@ export class PushSwapSim {
             };
         });
 
-        const delBtn = this.container.querySelector('.btn-delete');
-        delBtn.onclick = () => {
-            const index = this.#movesView.getIndex();
-            if (index > 0) {
-                this.#movesView.update(this.#movesView.getList().splice(index - 1, 1), index - 1);
-            }
-        };
+        this.#container.querySelector('.btn-delete').onclick = () => this.#deleteMove();
     }
 
     getIndex() { return this.#movesView.getIndex(); }
 
     setIndex(idx) {
-        let futureIndex = Math.max(0, Math.min(idx, this.#movesView.getList().length));
+        let futureIndex = Math.max(-1, Math.min(idx, this.#movesView.getList().length));
         const oldIndex = this.#movesView.getIndex();
-        if (futureIndex == this.#movesView.getIndex()) return;
+        if (futureIndex == oldIndex) return;
         this.#movesView.setIndex(futureIndex);
         this.#saveLocal();
         
@@ -131,16 +127,14 @@ export class PushSwapSim {
     }
 
     #applyIncrementalMoves(oldIndex) {
-        //FIXME Undo seems buggy
         const newIndex = this.#movesView.getIndex();
-        const direction = newIndex > oldIndex ? 1 : -1;
-        const start = direction > 0 ? oldIndex : newIndex;
-        const end = direction > 0 ? newIndex : oldIndex;
-        
-        for (let i = start; i < end; i++) {
-            const moveIndex = direction > 0 ? i : i - 1;
-            if (moveIndex >= 0 && moveIndex < this.getMoveListSize()) {
-                this.#stacksView.applyMove(this.getMoveAt(moveIndex));
+        if (newIndex < oldIndex) {
+            for (let i = oldIndex; i > newIndex; i--) {
+                this.#stacksView.applyMove(Move.reverse(this.getMoveAt(i)));
+            }
+        } else {
+            for (let i = oldIndex + 1; i <= newIndex; i++) {
+                this.#stacksView.applyMove(this.getMoveAt(i));
             }
         }
     }
@@ -180,22 +174,22 @@ export class PushSwapSim {
     }
 
     #saveLocal() {
-        localStorage.setItem(`ps_moves_${this.id}`, JSON.stringify(this.#movesView.getList())); 
-        localStorage.setItem(`ps_idx_${this.id}`, this.#movesView.getIndex()); 
-        localStorage.setItem(`ps_edit_mode_${this.id}`, this.editMode);
+        localStorage.setItem(`ps_moves_${this.#id}`, JSON.stringify(this.#movesView.getList())); 
+        localStorage.setItem(`ps_idx_${this.#id}`, this.#movesView.getIndex()); 
+        localStorage.setItem(`ps_edit_mode_${this.#id}`, this.editMode);
     }
 
     #loadLocal() {
-        const savedMoves = localStorage.getItem(`ps_moves_${this.id}`);
-        const savedIdx = localStorage.getItem(`ps_idx_${this.id}`);
-        const savedMode = localStorage.getItem(`ps_edit_mode_${this.id}`);
+        const savedMoves = localStorage.getItem(`ps_moves_${this.#id}`);
+        const savedIdx = localStorage.getItem(`ps_idx_${this.#id}`);
+        const savedMode = localStorage.getItem(`ps_edit_mode_${this.#id}`);
         const idx = savedIdx ? Number.parseInt(savedIdx) : 0;
         if (savedMoves) this.#movesView.update(JSON.parse(savedMoves), idx);
         this.editMode = savedMode || 'truncate';
     }
     #copyMoves() { navigator.clipboard.writeText(this.getMovesList().join(' ')); }
     #clearMoves() { 
-        this.#movesView.update([], 0); 
+        this.#movesView.update([], -1); 
         this.#rebuildStacks();
         this.#render(true); 
         this.#saveLocal(); 
@@ -211,33 +205,49 @@ export class PushSwapSim {
         this.#stacksView.setStacks(stacks);
         
         // Reset to beginning and render sidebar
-        this.#movesView.setIndex(0);
+        this.#movesView.setIndex(-1);
         this.#saveLocal();
         this.#render(true);
     }
 
+    #deleteMove() {
+        const index = this.#movesView.getIndex();
+        let list = [...this.#movesView.getList()];
+        if (index >= 0) {
+            const deleted = list.splice(index, 1);
+            this.#movesView.update(list, index-1);
+            this.#stacksView.applyMove(Move.reverse(deleted[0]));
+            this.#render(true);
+            this.#saveLocal();
+        }
+    }
+
     #addMove(op) {
         if(this.#isPlaying) return;
-        const idx = this.#movesView.getIndex();
-        let list = this.#movesView.getList();
+        let idx = this.#movesView.getIndex();
+        let list = [...this.#movesView.getList()];
         if (this.editMode === 'truncate') {
             list = list.slice(0, idx);
             list.push(op);
-            this.#movesView.update(list, idx + 1);
+            idx++;
         } else if (this.editMode === 'insert') {
-            list = list.splice(idx, 0, op);
-            this.#movesView.update(list, idx + 1);
+            // Insert at current index + 1
+            idx++;
+            list.splice(idx, 0, op);
         } else if (this.editMode === 'overwrite') {
+            // Overwrite after current index
+            idx++;
             if (idx < list.length) list[idx] = op;
             else list.push(op);
-            this.#movesView.update(list, idx + 1);
         }
+        this.#movesView.update(list, idx);
+        this.#stacksView.applyMove(op);
         this.#render(true);
         this.#saveLocal();
     }
 
     #syncMoves() {
-        const text = this.container.querySelector('.moves-display').innerText.replace(/,/g, ' ');
+        const text = this.#container.querySelector('.moves-display').innerText.replace(/,/g, ' ');
         let moves = text.trim().split(/\s+/).filter(x => x !== "");
         let idx = this.#movesView.getIndex();
 
@@ -247,9 +257,8 @@ export class PushSwapSim {
     }
 
     step(dir) {
-        //TODO Is this still used ?
         let newIdx = this.#movesView.getIndex() + dir;
-        if (newIdx >= 0 && newIdx <= this.getMoveListSize()) {
+        if (newIdx >= -1 && newIdx < this.getMoveListSize()) {
             this.setIndex(newIdx);
             return true;
         }
@@ -258,7 +267,11 @@ export class PushSwapSim {
 
     #rebuildStacks() {
         const stacks = new TwoStacks(this.#numbers, []);
-        for (let i = 0; i < this.#movesView.getIndex(); i++) {
+        let end = this.#movesView.getIndex();
+        if (end > this.getMoveListSize()) {
+            end = this.getMoveListSize()-1;
+        }
+        for (let i = 0; i <= end; i++) {
             stacks.applyMove(this.getMoveAt(i));
         }
         this.#stacksView.setStacks(stacks);
@@ -269,22 +282,22 @@ export class PushSwapSim {
         const stacks = this.#stacksView.getStacks();
         
         // 2. SIDEBAR Update
-        this.container.querySelectorAll('.btn-mode-edit').forEach(btn => {
+        this.#container.querySelectorAll('.btn-mode-edit').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.mode === this.editMode);
         });
 
         const noMoves = this.getMoveListSize() === 0;
         const noStacks = stacks.isEmpty();
-        const isAtEnd = this.#movesView.getIndex() === this.getMoveListSize();
-        const isAtStart = this.#movesView.getIndex() === 0;
+        const isAtEnd = this.#movesView.getIndex() === this.getMoveListSize()-1;
+        const isAtStart = this.#movesView.getIndex() < 0;
         const blockAll = this.#isPlaying || noStacks;
 
-        this.container.querySelector('.btn-play').disabled = blockAll || noMoves || isAtEnd;
-        this.container.querySelector('.btn-next').disabled = blockAll || noMoves || isAtEnd;
-        this.container.querySelector('.btn-prev').disabled = blockAll || noMoves || isAtStart;
-        this.container.querySelector('.btn-stop').disabled = !this.#isPlaying;
+        this.#container.querySelector('.btn-play').disabled = blockAll || noMoves || isAtEnd;
+        this.#container.querySelector('.btn-next').disabled = blockAll || noMoves || isAtEnd;
+        this.#container.querySelector('.btn-prev').disabled = blockAll || noMoves || isAtStart;
+        this.#container.querySelector('.btn-stop').disabled = !this.#isPlaying;
 
-        this.container.querySelectorAll('.controls-grid button').forEach(btn => {
+        this.#container.querySelectorAll('.controls-grid button').forEach(btn => {
             const op = btn.dataset.op;
             if (!op) return;
             let isDisabled = blockAll;
@@ -300,16 +313,16 @@ export class PushSwapSim {
             btn.disabled = isDisabled;
         });
 
-        this.container.querySelector('.btn-delete').disabled = blockAll || isAtStart;
-        this.container.querySelectorAll('.btn-mode-edit').forEach(btn => btn.disabled = blockAll);
+        this.#container.querySelector('.btn-delete').disabled = blockAll || isAtStart;
+        this.#container.querySelectorAll('.btn-mode-edit').forEach(btn => btn.disabled = blockAll);
 
         this.#updateSidebar(forceRedrawList);
-        if (this.onStateChange) this.onStateChange();
+        if (this.#onStateChange) this.#onStateChange();
     }
 
     #updateSidebar(force) {
-        this.container.querySelector('.idx-label').innerText = this.#movesView.getIndex();
-        this.container.querySelector('.count-label').innerText = `${this.#movesView.getList().length} moves`;
+        this.#container.querySelector('.idx-label').innerText = this.#movesView.getIndex();
+        this.#container.querySelector('.count-label').innerText = `${this.#movesView.getList().length} moves`;
     }
 
     setMovesSelection(start, end, className) {
@@ -318,9 +331,8 @@ export class PushSwapSim {
     }
 
     async #runAuto() {
-        console.log("runAuto", Number.parseInt(this.speedInput.value)); //TODO
         this.setPlaying(true);
-        while (this.#movesView.getIndex() < this.getMoveListSize() && this.#isPlaying) {
+        while (this.#movesView.getIndex() < this.getMoveListSize()-1 && this.#isPlaying) {
             const speed = Number.parseInt(this.speedInput.value);
             this.setIndex(this.#movesView.getIndex() + 1); 
             await new Promise(r => setTimeout(r, speed));

@@ -4,6 +4,20 @@ export class TwoStacksView {
     #viewB;
     #stacks;
     #renderScheduled = false;
+    
+    static #moveActions = {
+        'sa': (view) => view.#swapTopElements(view.#viewA),
+        'sb': (view) => view.#swapTopElements(view.#viewB),
+        'ss': (view) => { view.#swapTopElements(view.#viewA); view.#swapTopElements(view.#viewB); },
+        'pa': (view) => view.#pushElement(view.#viewB, view.#viewA),
+        'pb': (view) => view.#pushElement(view.#viewA, view.#viewB),
+        'ra': (view) => view.#rotateStack(view.#viewA),
+        'rb': (view) => view.#rotateStack(view.#viewB),
+        'rr': (view) => { view.#rotateStack(view.#viewA); view.#rotateStack(view.#viewB); },
+        'rra': (view) => view.#reverseRotateStack(view.#viewA),
+        'rrb': (view) => view.#reverseRotateStack(view.#viewB),
+        'rrr': (view) => { view.#reverseRotateStack(view.#viewA); view.#reverseRotateStack(view.#viewB); }
+    };
 
     constructor(parentContainer) {
         this.#container = parentContainer;
@@ -33,8 +47,6 @@ export class TwoStacksView {
      * Applique un mouvement directement sur les stacks et met à jour la vue.
      */
     applyMove(move) {
-        if (!this.#stacks) return;
-        
         // Apply the move to the data model first
         this.#stacks.applyMove(move);
         
@@ -43,44 +55,7 @@ export class TwoStacksView {
     }
 
     #applyDOMMove(move) {
-        switch (move) {
-            case 'sa':
-                this.#swapTopElements(this.#viewA);
-                break;
-            case 'sb':
-                this.#swapTopElements(this.#viewB);
-                break;
-            case 'ss':
-                this.#swapTopElements(this.#viewA);
-                this.#swapTopElements(this.#viewB);
-                break;
-            case 'pa':
-                this.#pushElement(this.#viewB, this.#viewA);
-                break;
-            case 'pb':
-                this.#pushElement(this.#viewA, this.#viewB);
-                break;
-            case 'ra':
-                this.#rotateStack(this.#viewA);
-                break;
-            case 'rb':
-                this.#rotateStack(this.#viewB);
-                break;
-            case 'rr':
-                this.#rotateStack(this.#viewA);
-                this.#rotateStack(this.#viewB);
-                break;
-            case 'rra':
-                this.#reverseRotateStack(this.#viewA);
-                break;
-            case 'rrb':
-                this.#reverseRotateStack(this.#viewB);
-                break;
-            case 'rrr':
-                this.#reverseRotateStack(this.#viewA);
-                this.#reverseRotateStack(this.#viewB);
-                break;
-        }
+        TwoStacksView.#moveActions[move](this);
 
         // Update visual feedback
         this.#container.classList.toggle('success-border', this.#stacks.isSorted());

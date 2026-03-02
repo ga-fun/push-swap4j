@@ -1,7 +1,7 @@
 export class ListView {
     #container;
     #list = [];
-    #currentIndex = 0;
+    #currentIndex = -1;
     #onItemClick;
     #onItemMouseEnter;
     #visibleRange = { start: 0, end: 0 }; // Cache de la plage visible
@@ -36,6 +36,9 @@ export class ListView {
      * Met à jour la liste complète et l'index actuel
      */
     update(list, currentIndex, redraw = true) {
+        if (currentIndex < -1 || currentIndex >= list.length) {
+            throw new Error("Invalid index");
+        }
         const listChanged = !this.#arraysEqual(this.#list, list);
         const indexChanged = this.#currentIndex !== currentIndex;
         
@@ -63,13 +66,7 @@ export class ListView {
         
         this.#list.forEach((item, i) => {
             const span = document.createElement('span');
-            
-            // On garde la logique de classe spécifique (past, current)
-            // Note: On pourrait passer une fonction de style en option pour détacher la logique métiers
-            span.className = "move-item " + 
-                (i === this.#currentIndex - 1 ? "move-current " : "") + 
-                (i < this.#currentIndex ? "move-past" : "");
-            
+            this.#style(span, i);
             span.innerText = item;
 
             if (this.#onItemClick) {
@@ -89,10 +86,10 @@ export class ListView {
     /** Scroll automatique vers l'élément actif */
     #scrollToSelected(currentElement = null) {
         // Optimisation: utiliser le cache de plage visible pour éviter les calculs
-        const targetIndex = this.#currentIndex - 1;
+        const targetIndex = this.#currentIndex;
         
         // Si l'index cible est dans la plage visible, pas besoin de scroller
-        if (targetIndex >= this.#visibleRange.start && targetIndex <= this.#visibleRange.end) {
+        if (targetIndex > this.#visibleRange.start && targetIndex <= this.#visibleRange.end) {
             return;
         }
         
@@ -195,6 +192,8 @@ export class ListView {
      * Met à jour uniquement les classes CSS des éléments entre oldIndex et newIndex
      */
     #updateClassesOnly(oldIndex) {
+		// Note: Could be optimized: we only have to remove or add move-past instead of rebuild the whole class
+		// Nevertheless it would be more complex to make style customizable.
         const spans = this.#container.querySelectorAll('.move-item');
         
         // Déterminer la plage d'éléments à mettre à jour
@@ -204,19 +203,23 @@ export class ListView {
         let selectedElement = null;
 
         for (let i = minIndex; i <= maxIndex; i++) {
-            const span = spans[i-1];
-            if (!span) continue;
-
-            // Mettre à jour les classes
-            span.className = "move-item";
-            if (i === this.#currentIndex) {
-                selectedElement = span;
-                span.classList.add('move-current');
-            } else if (i < this.#currentIndex) {
-                span.classList.add('move-past');
+            const span = spans[i];
+            if (span) {
+                this.#style(span, i);
+                if (i === this.#currentIndex) {
+                    selectedElement = span;
+                }
             }
         }
         
         this.#scrollToSelected(selectedElement);
+    }
+
+    #style(span, i) {
+        // Note: On pourrait passer une fonction de style en option pour détacher la logique métiers
+        span.className = "move-item";
+        if (i <= this.#currentIndex) {
+            span.classList.add('move-past');
+        }
     }
 }

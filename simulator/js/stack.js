@@ -1,8 +1,19 @@
+const MoveReverse = Object.freeze({
+    'sa': 'sa', 'sb': 'sb', 'ss': 'ss',
+    'pa': 'pb', 'pb': 'pa',
+    'ra': 'rra', 'rb': 'rrb', 'rr': 'rrr',
+    'rra': 'ra', 'rrb': 'rb', 'rrr': 'rr'
+});
+
 export const Move = Object.freeze({
     SA: 'sa', SB: 'sb', SS: 'ss',
     PA: 'pa', PB: 'pb',
     RA: 'ra', RB: 'rb', RR: 'rr',
-    RRA: 'rra', RRB: 'rrb', RRR: 'rrr'
+    RRA: 'rra', RRB: 'rrb', RRR: 'rrr',
+    
+    reverse(move) {
+        return MoveReverse[move];
+    }
 });
 
 export class Stack {
@@ -98,6 +109,20 @@ export class Stack {
 export class TwoStacks {
     #a;
     #b;
+    
+    static #moveActions = {
+        [Move.SA]: (stacks) => stacks.getStackA().swap(),
+        [Move.SB]: (stacks) => stacks.getStackB().swap(),
+        [Move.SS]: (stacks) => { stacks.getStackA().swap(); stacks.getStackB().swap(); },
+        [Move.PA]: (stacks) => stacks.#push(stacks.getStackB(), stacks.getStackA()),
+        [Move.PB]: (stacks) => stacks.#push(stacks.getStackA(), stacks.getStackB()),
+        [Move.RA]: (stacks) => stacks.getStackA().rotate(),
+        [Move.RB]: (stacks) => stacks.getStackB().rotate(),
+        [Move.RR]: (stacks) => { stacks.getStackA().rotate(); stacks.getStackB().rotate(); },
+        [Move.RRA]: (stacks) => stacks.getStackA().reverseRotate(),
+        [Move.RRB]: (stacks) => stacks.getStackB().reverseRotate(),
+        [Move.RRR]: (stacks) => { stacks.getStackA().reverseRotate(); stacks.getStackB().reverseRotate(); }
+    };
 
     constructor(numbersA = [], numbersB = []) {
         // On stocke en interne avec Top à la fin
@@ -115,36 +140,7 @@ export class TwoStacks {
     }
 
     applyMove(move) {
-        switch (move) {
-            case Move.SA:  this.#a.swap(); break;
-            case Move.SB:  this.#b.swap(); break;
-            case Move.SS:  this.#a.swap(); this.#b.swap(); break;
-            case Move.PA:  this.#push(this.#b, this.#a); break;
-            case Move.PB:  this.#push(this.#a, this.#b); break;
-            case Move.RA:  this.#a.rotate(); break;
-            case Move.RB:  this.#b.rotate(); break;
-            case Move.RR:  this.#a.rotate(); this.#b.rotate(); break;
-            case Move.RRA: this.#a.reverseRotate(); break;
-            case Move.RRB: this.#b.reverseRotate(); break;
-            case Move.RRR: this.#a.reverseRotate(); this.#b.reverseRotate(); break;
-        }
-    }
-
-    undoMove(move) {
-        switch (move) {
-            case Move.PA: this.#push(this.#a, this.#b); break; // undo PA (B->A) = PB (A->B)
-            case Move.PB: this.#push(this.#b, this.#a); break; // undo PB (A->B) = PA (B->A)
-            case Move.RA: this.#a.reverseRotate(); break; // undo RA = RRA
-            case Move.RB: this.#b.reverseRotate(); break; // undo RB = RRB
-            case Move.RR:  this.#a.reverseRotate(); this.#b.reverseRotate(); break;
-            case Move.RRA: this.#a.rotate(); break;       // undo RRA = RA
-            case Move.RRB: this.#b.rotate(); break;       // undo RRB = RB
-            case Move.RRR: this.#a.rotate(); this.#b.rotate(); break;
-            // sa, sb, ss sont leurs propres inverses
-            case Move.SA:  this.#a.swap(); break;
-            case Move.SB:  this.#b.swap(); break;
-            case Move.SS:  this.#a.swap(); this.#b.swap(); break;
-        }
+        TwoStacks.#moveActions[move](this);
     }
 
     #push(from, to) {
