@@ -61,6 +61,16 @@ export class PushSwapApp {
         }
     }
 
+    #animateNoDiffButton() {
+        const btn = document.getElementById('btn-find-main');
+        btn.classList.add('btn-no-diff');
+        
+        // Restaurer le bouton après l'animation
+        setTimeout(() => {
+            btn.classList.remove('btn-no-diff');
+        }, 1500);
+    }
+
     // --- LOGIQUE CORE ---
 
     #refreshGlobalUI() {
@@ -151,7 +161,7 @@ export class PushSwapApp {
 
     #findNextDiff() {
         const [s1, s2] = this.#sims;
-        let offA = s1.getIndex(), offB = s2.getIndex();
+        let offA = s1.getIndex()+1, offB = s2.getIndex()+1;
         let found = false;
 
         while (offA < s1.getMoveListSize() || offB < s2.getMoveListSize()) {
@@ -162,6 +172,8 @@ export class PushSwapApp {
         if (found) {
             this.#lastDiff.offA = offA; this.#lastDiff.offB = offB;
             this.#findConvergence(offA, offB);
+        } else {
+            this.#animateNoDiffButton();
         }
     }
 

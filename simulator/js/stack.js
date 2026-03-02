@@ -152,7 +152,7 @@ export class TwoStacks {
     }
 
     isSorted() {
-        return this.#a.isStrictlySorted() && this.#b.getSize() === 0;
+        return this.#b.getSize() === 0 && this.#a.isStrictlySorted();
     }
 
     equals(otherStacks) {

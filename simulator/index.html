@@ -74,6 +74,36 @@
         .diff-badge { background: #333; padding: 2px 6px; border-radius: 4px; font-size: 10px; color: #aaa; border: 1px solid #444; }
         .toolbar-moves { display: flex; justify-content: flex-end; gap: 8px; }
         .icon-btn { background: none; border: none; color: #888; cursor: pointer; font-size: 14px; padding: 2px; }
+        
+        /* BUTTON ANIMATION FEEDBACK */
+        .btn-no-diff { 
+            background: #666 !important; 
+            color: #fff !important;
+            animation: pulse 1.5s ease-in-out;
+            position: relative;
+        }
+        .btn-no-diff::after {
+            content: 'No differences found!';
+            position: absolute;
+            top: -25px;
+            right: 0;
+            background: #333;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            opacity: 0;
+            animation: fadeInOut 1.5s ease-in-out;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; transform: translateY(5px); }
+            20%, 80% { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
