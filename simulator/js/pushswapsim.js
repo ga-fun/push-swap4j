@@ -130,7 +130,7 @@ export class PushSwapSim {
         const newIndex = this.#movesView.getIndex();
         if (newIndex < oldIndex) {
             for (let i = oldIndex; i > newIndex; i--) {
-                this.#stacksView.applyMove(Move.reverse(this.getMoveAt(i)));
+                this.#stacksView.applyMove(ReverseMove[this.getMoveAt(i)]);
             }
         } else {
             for (let i = oldIndex + 1; i <= newIndex; i++) {
@@ -183,8 +183,17 @@ export class PushSwapSim {
         const savedMoves = localStorage.getItem(`ps_moves_${this.#id}`);
         const savedIdx = localStorage.getItem(`ps_idx_${this.#id}`);
         const savedMode = localStorage.getItem(`ps_edit_mode_${this.#id}`);
-        const idx = savedIdx ? Number.parseInt(savedIdx) : 0;
-        if (savedMoves) this.#movesView.update(JSON.parse(savedMoves), idx);
+        let idx = savedIdx ? Number.parseInt(savedIdx) : -1;
+        if (savedMoves) {
+            const moves = JSON.parse(savedMoves);
+            // Prevent crashing if saved state is inconsistent (possibly by a previous release)
+            if (idx < -1) {
+                idx = -1;
+            } else if (idx >= moves.length) {
+                idx = moves.length - 1;
+            }
+            this.#movesView.update(moves, idx);
+        }
         this.editMode = savedMode || 'truncate';
     }
     #copyMoves() { navigator.clipboard.writeText(this.getMovesList().join(' ')); }
@@ -209,6 +218,9 @@ export class PushSwapSim {
         this.#saveLocal();
         this.#render(true);
     }
+    getCurrentState() {
+        return new TwoStacks(this.#stacksView.getStacks().getStackA(), this.#stacksView.getStacks().getStackB());
+    }
 
     #deleteMove() {
         const index = this.#movesView.getIndex();
@@ -216,7 +228,7 @@ export class PushSwapSim {
         if (index >= 0) {
             const deleted = list.splice(index, 1);
             this.#movesView.update(list, index-1);
-            this.#stacksView.applyMove(Move.reverse(deleted[0]));
+            this.#stacksView.applyMove(ReverseMove[deleted[0]]);
             this.#render(true);
             this.#saveLocal();
         }

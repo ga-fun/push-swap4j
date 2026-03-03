@@ -1,4 +1,4 @@
-const MoveReverse = Object.freeze({
+export const ReverseMove = Object.freeze({
     'sa': 'sa', 'sb': 'sb', 'ss': 'ss',
     'pa': 'pb', 'pb': 'pa',
     'ra': 'rra', 'rb': 'rrb', 'rr': 'rrr',
@@ -10,19 +10,21 @@ export const Move = Object.freeze({
     PA: 'pa', PB: 'pb',
     RA: 'ra', RB: 'rb', RR: 'rr',
     RRA: 'rra', RRB: 'rrb', RRR: 'rrr',
-    
-    reverse(move) {
-        return MoveReverse[move];
-    }
 });
 
 export class Stack {
     #data;
 
-    constructor(numbers = []) {
-        // Entrée : [1, 2, 3] (1 est le top)
-        // Interne : [3, 2, 1] (1 est à l'index length-1)
-        this.#data = [...numbers].reverse();
+    constructor(input = []) {
+        if (input instanceof Stack) {
+            // Constructeur par copie
+            this.#data = [...input.#data];
+        } else {
+            // Constructeur normal avec tableau de nombres
+            // Entrée : [1, 2, 3] (1 est le top)
+            // Interne : [3, 2, 1] (1 est à l'index length-1)
+            this.#data = [...input].reverse();
+        }
     }
 
     /**
@@ -89,6 +91,14 @@ export class Stack {
         }
     }
 
+    /**
+     * Renvoie un tableau avec les éléments dans l'ordre du haut vers le bas.
+     * @returns {Array} Tableau des éléments de la pile du haut vers le bas.
+     */
+    toArray() {
+        return [...this.#data].reverse();
+    }
+
     equals(otherStack) {
         if (!(otherStack instanceof Stack)) return false;
         const otherData = otherStack.#data; 
@@ -125,7 +135,6 @@ export class TwoStacks {
     };
 
     constructor(numbersA = [], numbersB = []) {
-        // On stocke en interne avec Top à la fin
         this.#a = new Stack(numbersA);
         this.#b = new Stack(numbersB);
     }

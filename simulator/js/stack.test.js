@@ -1,5 +1,4 @@
-//import { describe, it, expect } from 'bun:test';
-import { Stack, TwoStacks, Move } from './stack.js';
+import { Stack, TwoStacks, Move, ReverseMove } from './stack.js';
 
 // Helper to get stack contents as array (top first)
 const toArray = (stack) => [...stack.iterator()];
@@ -15,6 +14,50 @@ describe('Stack', () => {
         it('creates a stack with top at index 0', () => {
             const s = new Stack([1, 2, 3]); // 1 is top
             expect(toArray(s)).toEqual([1, 2, 3]);
+        });
+
+        describe('copy constructor', () => {
+            it('creates a copy of an existing stack', () => {
+                const original = new Stack([1, 2, 3]);
+                const copy = new Stack(original);
+                expect(toArray(copy)).toEqual([1, 2, 3]);
+                expect(copy.getSize()).toBe(3);
+            });
+
+            it('creates an independent copy (deep copy)', () => {
+                const original = new Stack([1, 2, 3]);
+                const copy = new Stack(original);
+                
+                // Modify the copy
+                copy.push(4);
+                copy.pop();
+                
+                // Original should remain unchanged
+                expect(toArray(original)).toEqual([1, 2, 3]);
+                expect(toArray(copy)).toEqual([1, 2, 3]);
+            });
+
+            it('creates a copy of an empty stack', () => {
+                const original = new Stack();
+                const copy = new Stack(original);
+                expect(copy.getSize()).toBe(0);
+                expect(toArray(copy)).toEqual([]);
+            });
+
+            it('creates a copy of a single element stack', () => {
+                const original = new Stack([42]);
+                const copy = new Stack(original);
+                expect(toArray(copy)).toEqual([42]);
+                expect(copy.getSize()).toBe(1);
+            });
+
+            it('copy and original are equal but not the same reference', () => {
+                const original = new Stack([1, 2, 3]);
+                const copy = new Stack(original);
+                
+                expect(copy.equals(original)).toBe(true);
+                expect(copy).not.toBe(original);
+            });
         });
     });
 
@@ -159,7 +202,7 @@ describe('TwoStacks', () => {
             const ts     = new TwoStacks([3, 2, 1], [6, 5, 4]);
 
             ts.applyMove(move);
-            ts.undoMove(move);
+            ts.applyMove(ReverseMove[move]);
 
             expect(ts.getStackA().equals(before.getStackA())).toBe(true);
             expect(ts.getStackB().equals(before.getStackB())).toBe(true);
