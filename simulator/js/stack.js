@@ -114,6 +114,10 @@ export class Stack {
     isStrictlySorted() {
         return this.#data.every((val, i) => i === 0 || val < this.#data[i-1]);
     }
+
+    toJSON() {
+        return `[${this.toArray().join(', ')}]`;
+    }
 }
 
 export class TwoStacks {
@@ -167,5 +171,12 @@ export class TwoStacks {
     equals(otherStacks) {
         if (!(otherStacks instanceof TwoStacks)) return false;
         return this.#a.equals(otherStacks.#a) && this.#b.equals(otherStacks.#b);
+    }
+
+    toJSON() {
+        return {
+            a: this.#a.toJSON(),
+            B: this.#b.toJSON()
+        };
     }
 }

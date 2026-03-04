@@ -1,5 +1,5 @@
 import { PushSwapSim } from './pushswapsim.js';
-import { TwoStacks } from './stack.js';
+import { ConvergenceFinder } from './convergenceFinder.js';
 
 export class PushSwapApp {
     #sims = [];
@@ -61,14 +61,23 @@ export class PushSwapApp {
         }
     }
 
-    #animateNoDiffButton() {
+    #animateButtonFeedback(message, duration = 1500) {
         const btn = document.getElementById('btn-find-main');
         btn.classList.add('btn-no-diff');
+        
+        // Créer ou mettre à jour une balise style pour le message personnalisé
+        let styleEl = document.getElementById('dynamic-btn-style');
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'dynamic-btn-style';
+            document.head.appendChild(styleEl);
+        }
+        styleEl.textContent = `.btn-no-diff::after { content: '${message}' !important; }`;
         
         // Restaurer le bouton après l'animation
         setTimeout(() => {
             btn.classList.remove('btn-no-diff');
-        }, 1500);
+        }, duration);
     }
 
     // --- LOGIQUE CORE ---
@@ -128,7 +137,7 @@ export class PushSwapApp {
 
     #checkIfMatch() {
         if (this.#sims.length < 2) return true;
-        return this.#sims[0].getStacks().equals(this.#sims[1].getStacks());
+        return this.#sims[0].getStacks(false).equals(this.#sims[1].getStacks(false));
     }
 
     #updateSyncStatus() {
@@ -152,13 +161,6 @@ export class PushSwapApp {
         document.getElementById('btn-find-main').disabled = anyPlaying || anyEmpty;
     }
 
-    #getStateAt(sim, index) {
-        let stacks = new TwoStacks(sim.getInitialState(), []);
-        const limit = Math.min(index, sim.getMoveListSize());
-        for (let i = 0; i < limit; i++) stacks.applyMove(sim.getMoveAt(i));
-        return stacks;
-    }
-
     #findNextDiff() {
         const [s1, s2] = this.#sims;
         let offA = s1.getIndex()+1, offB = s2.getIndex()+1;
@@ -173,7 +175,7 @@ export class PushSwapApp {
             this.#lastDiff.offA = offA; this.#lastDiff.offB = offB;
             this.#findConvergence(offA, offB);
         } else {
-            this.#animateNoDiffButton();
+            this.#animateButtonFeedback('No differences found!');
         }
     }
 
@@ -181,43 +183,48 @@ export class PushSwapApp {
         this.#findConvergence(this.#sims[0].getIndex(), this.#sims[1].getIndex());
     }
 
+    #getConvergenceMoveList(sim) {
+        return {
+            getSize: () => sim.getMoveListSize(),
+            get: (index) => sim.getMoveAt(index)
+        }
+    }
+
     #findConvergence(offA, offB) {
         const [s1, s2] = this.#sims;
-        let convA = -1, convB = -1;
-        const range = 200;
-
-        outer: for (let i = 0; i <= range; i++) {
-            for (let j = 0; j <= range; j++) {
-                if (i === 0 && j === 0) continue;
-                let aState = this.#getStateAt(s1, offA + i);
-                let bState = this.#getStateAt(s2, offB + j)
-                if (aState.equals(bState)) {
-                    convA = offA + i; convB = offB + j;
-                    break outer;
-                }
-            }
-        }
-
+        const finder = new ConvergenceFinder(s1.getInitialState());
+        const result = finder.findConvergence(this.#getConvergenceMoveList(s1), this.#getConvergenceMoveList(s2), offA, offB);
+        let convA = result?.convA, convB = result?.convB;
         this.#lastDiff = { offA, offB, convA, convB };
         s1.setIndex(offA); s2.setIndex(offB);
         this.#applyHighlight();
     }
 
     #applyHighlight() {
+        console.log("findConvergence result", this.#lastDiff);
         const { offA, offB, convA, convB } = this.#lastDiff;
-        const endA = convA !== -1 ? convA : this.#sims[0].getMoveListSize();
-        const endB = convB !== -1 ? convB : this.#sims[1].getMoveListSize();
         
-        const lenA = endA - offA, lenB = endB - offB;
-        document.getElementById('diff-stats').innerHTML = `<span class="diff-badge">A: ${lenA}</span> <span class="diff-badge">B: ${lenB}</span>`;
+        if (!convA || !convB) {
+            this.#animateButtonFeedback('No convergence found!');
+        } else {
+            const lenA = convA - offA, lenB = convB - offB;
+            document.getElementById('diff-stats').innerHTML = `<span class="diff-badge">A: ${lenA}</span> <span class="diff-badge">B: ${lenB}</span>`;
 
-        // Appliquer les nouvelles sélections avec les bons types
-        const classA = lenA < lenB ? 'better' : (lenA > lenB ? 'worse' : 'neutral');
-        const classB = lenB < lenA ? 'better' : (lenB > lenA ? 'worse' : 'neutral');
+            // Appliquer les nouvelles sélections avec les bons types
+            this.#sims[0].setMovesSelection(offA, convA, this.#getHightLightClass(lenA, lenB));
+            this.#sims[1].setMovesSelection(offB, convB, this.#getHightLightClass(lenB, lenA));
+            document.getElementById('merge-tools').style.display = 'flex';
+        }
+    }
 
-        this.#sims[0].setMovesSelection(offA, endA, classA);
-        this.#sims[1].setMovesSelection(offB, endB, classB);
-        document.getElementById('merge-tools').style.display = 'flex';
+    #getHightLightClass(myLen, otherLen) {
+        if (myLen < otherLen) {
+            return 'better';
+        } else if (myLen > otherLen) {
+            return 'worse';
+        } else {
+            return 'neutral';
+        }
     }
 
     #skipToConvergence() {

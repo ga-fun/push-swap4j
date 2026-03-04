@@ -1,4 +1,4 @@
-import { TwoStacks, Move } from './stack.js';
+import { TwoStacks, Move, ReverseMove } from './stack.js';
 import { TwoStacksView } from './twostacksview.js';
 import { ListView } from './listView.js';
 
@@ -159,8 +159,10 @@ export class PushSwapSim {
         this.#render(true);
     }
     
-    // On expose les stacks de la vue si besoin
-    getStacks() { return this.#stacksView.getStacks(); }
+    getStacks(copy=true) {
+        const stacks = this.#stacksView.getStacks();
+        return copy ? new TwoStacks(stacks.getStackA().toArray(), stacks.getStackB().toArray()) : stacks;
+    }
 
     #getSnapshotValue(index) {
         const nums = this.#numbers;

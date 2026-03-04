@@ -159,11 +159,8 @@ export class ListView {
         });
         
         // Appliquer la nouvelle sélection
-        for (let i = start; i < end && i < spans.length; i++) {
-            const span = spans[i];
-            if (span) {
-                span.classList.add(`move-diff-${type}`);
-            }
+        for (let i = start; i <= end; i++) {
+            spans[i].classList.add(`move-diff-${type}`);
         }
     }
 
