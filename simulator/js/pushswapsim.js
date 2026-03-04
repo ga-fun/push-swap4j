@@ -6,7 +6,6 @@ export class PushSwapSim {
     static #VALID_MOVES = new Set(Object.values(Move));
     
     #container;
-    #id;
     #onStateChange;
     #isPlaying = false;
     #numbers = [];
@@ -14,30 +13,13 @@ export class PushSwapSim {
     #movesView;
 
     constructor(containerId, id, title = "Sim", onStateChange = null) {
-        this.#id = id;
         this.#onStateChange = onStateChange;
 
         this.#container = document.createElement('div');
         this.#container.className = 'ps-component';
         this.#container.innerHTML = `
             <div class="ps-sidebar">
-                <div style="font-weight: bold; font-size: 11px; color: #888; display:flex; justify-content:space-between; align-items:center;">
-                    <span>${title}</span>
-                    <div class="toolbar-moves">
-                        <button class="icon-btn btn-copy" title="Copy">📋</button>
-                        <button class="icon-btn btn-clear" title="Clear">🗑️</button>
-                    </div>
-                </div>
-                <div class="moves-display"></div>
-                <div style="font-size: 10px; display: flex; justify-content: space-between;">
-                    <span class="count-label">0 moves</span>
-                    <span style="color:#40c4ff">Idx: <span class="idx-label">0</span></span>
-                </div>
-                <div class="edit-mode-container">
-                    <button class="btn-action btn-mode-edit active" data-mode="truncate">TRUNC</button>
-                    <button class="btn-action btn-mode-edit" data-mode="insert">INS</button>
-                    <button class="btn-action btn-mode-edit" data-mode="overwrite">OVER</button>
-                </div>
+                <div class="moves-display-anchor"></div>
                 <div class="controls-grid">
                     ${[Move.SA, Move.SB, Move.SS, Move.PA, Move.PB, '', Move.RA, Move.RB, Move.RR, Move.RRA, Move.RRB, Move.RRR].map(op => 
                         op ? `<button class="btn-action" data-op="${op}" ${op.startsWith('p')?'style="background:#1b5e20"':''}>${op}</button>` : `<span></span>`
@@ -48,8 +30,10 @@ export class PushSwapSim {
                     <button class="btn-action btn-prev btn-blue-style" style="flex:1">PREV</button>
                     <button class="btn-action btn-next btn-blue-style" style="flex:1">NEXT</button>
                 </div>
-                <button class="btn-action btn-play btn-play-style">PLAY ▶️</button>
-                <button class="btn-action btn-stop btn-stop-style" disabled>STOP ⏹️</button>
+                <div style="display: flex; gap: 3px;">
+                    <button class="btn-action btn-play btn-play-style" style="flex:1">PLAY ▶️</button>
+                    <button class="btn-action btn-stop btn-stop-style" style="flex:1" disabled>STOP ⏹️</button>
+                </div>
                 <input type="range" class="speed-range" min="1" max="1000" value="100" dir="rtl">
             </div>
             <div class="ps-visualizer-anchor"></div>
@@ -59,21 +43,24 @@ export class PushSwapSim {
         const anchor = this.#container.querySelector('.ps-visualizer-anchor');
         this.#stacksView = new TwoStacksView(anchor);
 
-        const movesView = this.#container.querySelector('.moves-display');
-        this.#movesView = new ListView(movesView, {
-            onItemClick: (move, i) => this.setIndex(i),
+        const movesView = this.#container.querySelector('.moves-display-anchor');
+        this.#movesView = new ListView(movesView, id, title,{
+            onItemClicked: (index) => {
+                this.#rebuildStacks(index);
+            },
             onItemMouseEnter: (move, i, el) => {
                 if (this.#isPlaying) return;
+                let title = "Move " + i;
                 if (move === 'pa' || move === 'pb') {
                     const val = this.#getSnapshotValue(i);
-                    el.title = `Pushed value: ${val}`;
+                    title += ` - Pushed value: ${val}`;
                 }
+                el.title = title;
             }
         });
         this.speedInput = this.#container.querySelector('.speed-range');
         
         this.#initEvents();
-        this.#loadLocal();
         
         // Initialize stacks if no initial state was set
         if (this.#numbers.length === 0) {
@@ -89,18 +76,6 @@ export class PushSwapSim {
         this.#container.querySelector('.btn-prev').onclick = () => this.step(-1);
         this.#container.querySelector('.btn-play').onclick = () => this.#runAuto();
         this.#container.querySelector('.btn-stop').onclick = () => this.#isPlaying = false;
-        this.#container.querySelector('.btn-copy').onclick = () => this.#copyMoves();
-        this.#container.querySelector('.btn-clear').onclick = () => this.#clearMoves();
-        this.#container.querySelector('.moves-display').oninput = () => { this.#syncMoves(); this.#saveLocal(); };
-
-        this.#container.querySelectorAll('.btn-mode-edit').forEach(btn => {
-            btn.onclick = () => {
-                this.editMode = btn.dataset.mode;
-                this.#saveLocal();
-                this.#render();
-            };
-        });
-
         this.#container.querySelector('.btn-delete').onclick = () => this.#deleteMove();
     }
 
@@ -111,7 +86,6 @@ export class PushSwapSim {
         const oldIndex = this.#movesView.getIndex();
         if (futureIndex == oldIndex) return;
         this.#movesView.setIndex(futureIndex);
-        this.#saveLocal();
         
         // Use optimized applyMove for adjacent steps
         if (Math.abs(oldIndex - futureIndex) === 1) {
@@ -121,9 +95,7 @@ export class PushSwapSim {
             // For non-adjacent changes, rebuild stacks completely
             this.#rebuildStacks();
         }
-        
-        // Render sidebar only (stacks are already updated in TwoStacksView)
-        this.#render(true);
+        this.#render();
     }
 
     #applyIncrementalMoves(oldIndex) {
@@ -154,9 +126,7 @@ export class PushSwapSim {
 
         // Rebuild stacks in TwoStacksView
         this.#rebuildStacks();
-
-        this.#saveLocal();
-        this.#render(true);
+        this.#render();
     }
     
     getStacks(copy=true) {
@@ -175,37 +145,6 @@ export class PushSwapSim {
         return stack.getSize() > 0 ? stack.top() : "empty";
     }
 
-    #saveLocal() {
-        localStorage.setItem(`ps_moves_${this.#id}`, JSON.stringify(this.#movesView.getList())); 
-        localStorage.setItem(`ps_idx_${this.#id}`, this.#movesView.getIndex()); 
-        localStorage.setItem(`ps_edit_mode_${this.#id}`, this.editMode);
-    }
-
-    #loadLocal() {
-        const savedMoves = localStorage.getItem(`ps_moves_${this.#id}`);
-        const savedIdx = localStorage.getItem(`ps_idx_${this.#id}`);
-        const savedMode = localStorage.getItem(`ps_edit_mode_${this.#id}`);
-        let idx = savedIdx ? Number.parseInt(savedIdx) : -1;
-        if (savedMoves) {
-            const moves = JSON.parse(savedMoves);
-            // Prevent crashing if saved state is inconsistent (possibly by a previous release)
-            if (idx < -1) {
-                idx = -1;
-            } else if (idx >= moves.length) {
-                idx = moves.length - 1;
-            }
-            this.#movesView.update(moves, idx);
-        }
-        this.editMode = savedMode || 'truncate';
-    }
-    #copyMoves() { navigator.clipboard.writeText(this.getMovesList().join(' ')); }
-    #clearMoves() { 
-        this.#movesView.update([], -1); 
-        this.#rebuildStacks();
-        this.#render(true); 
-        this.#saveLocal(); 
-    }
-
     getInitialState() { return [...this.#numbers]; }
     setInitialState(numbers) {
         if (!numbers || !Array.isArray(numbers)) throw new Error('Invalid initial state');
@@ -217,8 +156,7 @@ export class PushSwapSim {
         
         // Reset to beginning and render sidebar
         this.#movesView.setIndex(-1);
-        this.#saveLocal();
-        this.#render(true);
+        this.#render();
     }
     getCurrentState() {
         return new TwoStacks(this.#stacksView.getStacks().getStackA(), this.#stacksView.getStacks().getStackB());
@@ -231,8 +169,7 @@ export class PushSwapSim {
             const deleted = list.splice(index, 1);
             this.#movesView.update(list, index-1);
             this.#stacksView.applyMove(ReverseMove[deleted[0]]);
-            this.#render(true);
-            this.#saveLocal();
+            this.#render();
         }
     }
 
@@ -254,18 +191,7 @@ export class PushSwapSim {
         }
         this.#movesView.update(list, idx);
         this.#stacksView.applyMove(op);
-        this.#render(true);
-        this.#saveLocal();
-    }
-
-    #syncMoves() {
-        const text = this.#container.querySelector('.moves-display').innerText.replace(/,/g, ' ');
-        let moves = text.trim().split(/\s+/).filter(x => x !== "");
-        let idx = this.#movesView.getIndex();
-
-        if (idx > moves.length) idx = moves.length;
-        this.#movesView.update(moves, idx);
-        this.#render(false);
+        this.#render();
     }
 
     step(dir) {
@@ -289,15 +215,11 @@ export class PushSwapSim {
         this.#stacksView.setStacks(stacks);
     }
 
-    #render(forceRedrawList = false) {
+    #render() {
         // 1. STACKS ARE NOW MANAGED BY TwoStacksView - NO CREATION NEEDED HERE
         const stacks = this.#stacksView.getStacks();
         
         // 2. SIDEBAR Update
-        this.#container.querySelectorAll('.btn-mode-edit').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.mode === this.editMode);
-        });
-
         const noMoves = this.getMoveListSize() === 0;
         const noStacks = stacks.isEmpty();
         const isAtEnd = this.#movesView.getIndex() === this.getMoveListSize()-1;
@@ -328,13 +250,7 @@ export class PushSwapSim {
         this.#container.querySelector('.btn-delete').disabled = blockAll || isAtStart;
         this.#container.querySelectorAll('.btn-mode-edit').forEach(btn => btn.disabled = blockAll);
 
-        this.#updateSidebar(forceRedrawList);
         if (this.#onStateChange) this.#onStateChange();
-    }
-
-    #updateSidebar(force) {
-        this.#container.querySelector('.idx-label').innerText = this.#movesView.getIndex();
-        this.#container.querySelector('.count-label').innerText = `${this.#movesView.getList().length} moves`;
     }
 
     setMovesSelection(start, end, className) {

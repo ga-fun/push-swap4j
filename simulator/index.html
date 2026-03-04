@@ -47,6 +47,7 @@
         
         /* MOVES DISPLAY */
         .moves-display { flex-grow: 1; background: #000; border: 1px solid var(--border); padding: 8px; border-radius: 4px; font-family: monospace; font-size: 11px; overflow-y: auto; outline: none; line-height: 1.6; min-height: 0; }
+        .moves-display-anchor { flex-grow: 1; display: flex; flex-direction: column; min-height: 0; }
         .move-item { color: #777; padding-right: 2px; padding-left: 2px; cursor: pointer; border-bottom: 1px solid transparent; }
         .move-past { color: #fff; }
         /*.move-current { color: #fff; background: var(--blue); font-weight: bold; border-radius: 2px; } // May be reused for selection*/
@@ -129,8 +130,8 @@
         <div id="merge-tools" class="merge-zone" style="display: none;">
             <button id="btn-skip-diff" class="btn-merge">SKIP DIFF ⏭️</button>
             <div id="diff-stats" style="display: flex; gap: 5px; align-items: center; margin: 0 5px;"></div>
-            <button id="btn-merge-a-to-b" class="btn-merge">A → B</button>
-            <button id="btn-merge-b-to-a" class="btn-merge">A ← B</button>
+            <button id="btn-merge-a-to-b" class="btn-merge">1 → 2</button>
+            <button id="btn-merge-b-to-a" class="btn-merge">2 ← 1</button>
         </div>
 
         <div id="stack-match-indicator" class="match-false">STACKS: DIVERGENT</div>

@@ -1,25 +1,44 @@
 export class ListView {
+    #id;
+    #container;
     #listContainer;
+    #elementCountSpan;
     #list = [];
     #currentIndex = -1;
-    #onItemClick;
     #onItemMouseEnter;
+    #onItemClicked;
     #visibleRange = { start: 0, end: 0 }; // Cache de la plage visible
     #selection = { start: -1, end: -1, type: null }; // Mémorisation de la sélection
+    #editMode = 'truncate';
 
     /**
      * @param {HTMLElement} container - L'élément où injecter la liste
+     * @param {string} title - Le titre de la liste
      * @param {Object} options - Callbacks pour les interactions
      */
-    constructor(container, options = {}) {
-        this.#onItemClick = options.onItemClick || null;
+    constructor(container, id, title, options = {}) {
+        this.#id = id;
         this.#onItemMouseEnter = options.onItemMouseEnter || null;
+        this.#onItemClicked = options.onItemClicked || null;
         
-        // Créer le container intermédiaire pour les éléments de la liste
-        this.#listContainer = document.createElement('div');
-        this.#listContainer.className = 'list-items-container';
-        this.#listContainer.contentEditable = true;
-        container.appendChild(this.#listContainer);
+        container.innerHTML = `
+            <div style="font-weight: bold; font-size: 11px; color: #888; display:flex; justify-content:space-between; align-items:center;">
+                <span>${title}</span> <span class="element-count"> - </span>
+                <div class="toolbar-moves">
+                    <button class="icon-btn btn-copy" title="Copy">📋</button>
+                    <button class="icon-btn btn-clear" title="Clear">🗑️</button>
+                </div>
+            </div>
+            <div class="moves-display" contenteditable="true"></div>
+            <div class="edit-mode-container" style="margin-top: 3px">
+                    <button class="btn-action btn-mode-edit active" data-mode="truncate">TRUNC</button>
+                    <button class="btn-action btn-mode-edit" data-mode="insert">INS</button>
+                    <button class="btn-action btn-mode-edit" data-mode="overwrite">OVER</button>
+            </div>
+        `;
+        this.#container = container;
+        this.#listContainer = container.querySelector('.moves-display');
+        this.#elementCountSpan = container.querySelector('.element-count');
         
         // Initialiser le cache de la plage visible
         this.#updateVisibleRange();
@@ -31,17 +50,31 @@ export class ListView {
             });
             resizeObserver.observe(this.#listContainer);
         }
+
+        container.querySelector('.btn-copy').onclick = () => this.#copyMoves();
+        container.querySelector('.btn-clear').onclick = () => this.#clearMoves();
+        container.querySelector('.moves-display').oninput = () => { this.#syncMoves(); this.#saveList(); };
+        container.querySelectorAll('.btn-mode-edit').forEach(btn => {
+            btn.onclick = () => {
+                this.#editMode = btn.dataset.mode;
+                this.#saveEditMode(); 
+                this.#render();
+            };
+        });
+
         
         // Observer les scroll pour mettre à jour la plage visible
         this.#listContainer.addEventListener('scroll', () => {
             this.#updateVisibleRange();
         }, { passive: true });
+
+        this.#loadLocal();
     }
 
     /**
      * Met à jour la liste complète et l'index actuel
      */
-    update(list, currentIndex, redraw = true) {
+    update(list, currentIndex, redraw = true, save = true) {
         if (currentIndex < -1 || currentIndex >= list.length) {
             throw new Error("Invalid index");
         }
@@ -55,6 +88,9 @@ export class ListView {
         
         if (listChanged) {
             this.#list = list;
+            if (save) {
+                this.#saveList();
+            }
             if (redraw) {
                 this.#render();
             }
@@ -62,12 +98,60 @@ export class ListView {
             // Seul l'index a changé, on met juste à jour les classes
             this.#updateClassesOnly(oldIndex);
         }
+        if (indexChanged && save) {
+            this.#saveIndex();
+        }
+    }
+
+    #saveIndex() {
+        //TODO Should do debouncing
+        // For now, save immediately
+        localStorage.setItem(`ps_idx_${this.#id}`, this.#currentIndex); 
+    }
+
+    #saveEditMode() {
+        localStorage.setItem(`ps_edit_mode_${this.#id}`, this.#editMode); 
+    }
+
+    #saveList() {
+        localStorage.setItem(`ps_moves_${this.#id}`, JSON.stringify(this.#list)); 
+    }
+
+    #loadLocal() {
+        const savedMoves = localStorage.getItem(`ps_moves_${this.#id}`);
+        const savedIdx = localStorage.getItem(`ps_idx_${this.#id}`);
+        const savedMode = localStorage.getItem(`ps_edit_mode_${this.#id}`);
+        let idx = savedIdx ? Number.parseInt(savedIdx) : -1;
+        this.#editMode = savedMode || 'truncate';
+        if (savedMoves) {
+            const moves = JSON.parse(savedMoves);
+            // Prevent crashing if saved state is inconsistent (possibly by a previous release)
+            if (idx < -1) {
+                idx = -1;
+            } else if (idx >= moves.length) {
+                idx = moves.length - 1;
+            }
+            this.update(moves, idx, false, false);
+        }
+        this.#render();
+    }
+    #copyMoves() { navigator.clipboard.writeText(this.getMovesList().join(' ')); }
+    #clearMoves() { 
+        this.update([], -1);
+    }
+    #syncMoves() {
+        const text = this.#listContainer.querySelector('.moves-display').innerText.replace(/,/g, ' ');
+        let moves = text.trim().split(/\s+/).filter(x => x !== "");
+
+        if (this.#currentIndex >= moves.length) this.#currentIndex = moves.length-1;
+        this.update(moves, this.#currentIndex);
     }
 
     /**
      * Rendu complet de la liste (Méthode gourmande à optimiser plus tard)
      */
     #render() {
+        this.#elementCountSpan.textContent = this.#list.length==0 ? "-" : "("+this.#list.length+" el)"
         this.#listContainer.innerHTML = '';
         
         this.#list.forEach((item, i) => {
@@ -75,15 +159,21 @@ export class ListView {
             this.#style(span, i);
             span.innerText = item;
 
-            if (this.#onItemClick) {
-                span.onclick = () => this.#onItemClick(item, i);
-            }
+            span.onclick = () => {
+                this.setIndex(i);
+                if (this.#onItemClicked) {
+                    this.#onItemClicked(i);
+                }
+            };
 
             if (this.#onItemMouseEnter) {
                 span.onmouseenter = () => this.#onItemMouseEnter(item, i, span);
             }
 
             this.#listContainer.appendChild(span);
+        });
+        this.#container.querySelectorAll('.btn-mode-edit').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === this.#editMode);
         });
 
         this.#scrollToSelected();
@@ -146,6 +236,7 @@ export class ListView {
         
         // Optimisation: mise à jour des classes seulement
         this.#updateClassesOnly(oldIndex);
+        this.#saveIndex();
     }
 
     getList() { return this.#list; }
