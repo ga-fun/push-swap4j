@@ -1,19 +1,25 @@
 export class ListView {
-    #container;
+    #listContainer;
     #list = [];
     #currentIndex = -1;
     #onItemClick;
     #onItemMouseEnter;
     #visibleRange = { start: 0, end: 0 }; // Cache de la plage visible
+    #selection = { start: -1, end: -1, type: null }; // Mémorisation de la sélection
 
     /**
      * @param {HTMLElement} container - L'élément où injecter la liste
      * @param {Object} options - Callbacks pour les interactions
      */
     constructor(container, options = {}) {
-        this.#container = container;
         this.#onItemClick = options.onItemClick || null;
         this.#onItemMouseEnter = options.onItemMouseEnter || null;
+        
+        // Créer le container intermédiaire pour les éléments de la liste
+        this.#listContainer = document.createElement('div');
+        this.#listContainer.className = 'list-items-container';
+        this.#listContainer.contentEditable = true;
+        container.appendChild(this.#listContainer);
         
         // Initialiser le cache de la plage visible
         this.#updateVisibleRange();
@@ -23,11 +29,11 @@ export class ListView {
             const resizeObserver = new ResizeObserver(() => {
                 this.#updateVisibleRange();
             });
-            resizeObserver.observe(this.#container);
+            resizeObserver.observe(this.#listContainer);
         }
         
         // Observer les scroll pour mettre à jour la plage visible
-        this.#container.addEventListener('scroll', () => {
+        this.#listContainer.addEventListener('scroll', () => {
             this.#updateVisibleRange();
         }, { passive: true });
     }
@@ -50,7 +56,7 @@ export class ListView {
         if (listChanged) {
             this.#list = list;
             if (redraw) {
-                this.render();
+                this.#render();
             }
         } else if (indexChanged && redraw) {
             // Seul l'index a changé, on met juste à jour les classes
@@ -61,8 +67,8 @@ export class ListView {
     /**
      * Rendu complet de la liste (Méthode gourmande à optimiser plus tard)
      */
-    render() {
-        this.#container.innerHTML = '';
+    #render() {
+        this.#listContainer.innerHTML = '';
         
         this.#list.forEach((item, i) => {
             const span = document.createElement('span');
@@ -77,7 +83,7 @@ export class ListView {
                 span.onmouseenter = () => this.#onItemMouseEnter(item, i, span);
             }
 
-            this.#container.appendChild(span);
+            this.#listContainer.appendChild(span);
         });
 
         this.#scrollToSelected();
@@ -93,7 +99,7 @@ export class ListView {
             return;
         }
         
-        const current = currentElement || this.#container.querySelector('.move-current');
+        const current = currentElement || this.#listContainer.querySelector('.move-current');
         if (!current) return;
 
         // Sinon, scroller et mettre à jour le cache
@@ -105,13 +111,13 @@ export class ListView {
      * Met à jour le cache de la plage d'éléments visibles
      */
     #updateVisibleRange() {
-        const spans = this.#container.children;
+        const spans = this.#listContainer.children;
         if (spans.length === 0) {
             this.#visibleRange = { start: 0, end: 0 };
             return;
         }
 
-        const containerRect = this.#container.getBoundingClientRect();
+        const containerRect = this.#listContainer.getBoundingClientRect();
         const containerTop = containerRect.top;
         const containerBottom = containerRect.bottom;
 
@@ -151,7 +157,10 @@ export class ListView {
      * @param {string} type - Type de sélection: 'better', 'neutral', 'worse'
      */
     applySelection(start, end, type = 'neutral') {
-        const spans = this.#container.querySelectorAll('.move-item');
+        // Mémoriser la sélection
+        this.#selection = { start, end, type };
+        
+        const spans = this.#listContainer.querySelectorAll('.move-item');
         
         // Retirer toutes les classes de sélection existantes
         spans.forEach(span => {
@@ -168,7 +177,10 @@ export class ListView {
      * Efface toutes les sélections
      */
     clearSelection() {
-        const spans = this.#container.querySelectorAll('.move-item');
+        // Réinitialiser la sélection mémorisée
+        this.#selection = { start: -1, end: -1, type: null };
+        
+        const spans = this.#listContainer.querySelectorAll('.move-item');
         spans.forEach(span => {
             span.classList.remove('move-diff-better', 'move-diff-worse', 'move-diff');
         });
@@ -191,7 +203,7 @@ export class ListView {
     #updateClassesOnly(oldIndex) {
 		// Note: Could be optimized: we only have to remove or add move-past instead of rebuild the whole class
 		// Nevertheless it would be more complex to make style customizable.
-        const spans = this.#container.querySelectorAll('.move-item');
+        const spans = this.#listContainer.querySelectorAll('.move-item');
         
         // Déterminer la plage d'éléments à mettre à jour
         const minIndex = Math.min(oldIndex, this.#currentIndex);
@@ -217,6 +229,11 @@ export class ListView {
         span.className = "move-item";
         if (i <= this.#currentIndex) {
             span.classList.add('move-past');
+        }
+        
+        // Appliquer la sélection mémorisée si applicable
+        if (this.#selection.type && i >= this.#selection.start && i <= this.#selection.end) {
+            span.classList.add(`move-diff-${this.#selection.type}`);
         }
     }
 }

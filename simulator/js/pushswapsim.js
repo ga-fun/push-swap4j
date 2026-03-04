@@ -28,7 +28,7 @@ export class PushSwapSim {
                         <button class="icon-btn btn-clear" title="Clear">🗑️</button>
                     </div>
                 </div>
-                <div class="moves-display" contenteditable="true"></div>
+                <div class="moves-display"></div>
                 <div style="font-size: 10px; display: flex; justify-content: space-between;">
                     <span class="count-label">0 moves</span>
                     <span style="color:#40c4ff">Idx: <span class="idx-label">0</span></span>
@@ -240,17 +240,15 @@ export class PushSwapSim {
         if(this.#isPlaying) return;
         let idx = this.#movesView.getIndex();
         let list = [...this.#movesView.getList()];
+        idx++;
         if (this.editMode === 'truncate') {
             list = list.slice(0, idx);
             list.push(op);
-            idx++;
         } else if (this.editMode === 'insert') {
             // Insert at current index + 1
-            idx++;
             list.splice(idx, 0, op);
         } else if (this.editMode === 'overwrite') {
             // Overwrite after current index
-            idx++;
             if (idx < list.length) list[idx] = op;
             else list.push(op);
         }

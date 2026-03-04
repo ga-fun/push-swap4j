@@ -20,9 +20,9 @@ export class PushSwapApp {
         // Callback de notification pour les composants
         const refreshCB = () => this.#refreshGlobalUI();
         
-        this.#sims.push(new PushSwapSim('main-wrapper', 'left', 'VERSION A', refreshCB));
+        this.#sims.push(new PushSwapSim('main-wrapper', 'left', 'VERSION 1', refreshCB));
         if (this.#compareMode) {
-            this.#sims.push(new PushSwapSim('main-wrapper', 'right', 'VERSION B', refreshCB));
+            this.#sims.push(new PushSwapSim('main-wrapper', 'right', 'VERSION 2', refreshCB));
         }
 
         document.getElementById('sync-controls').style.display = this.#compareMode ? 'flex' : 'none';
@@ -208,7 +208,7 @@ export class PushSwapApp {
             this.#animateButtonFeedback('No convergence found!');
         } else {
             const lenA = convA - offA, lenB = convB - offB;
-            document.getElementById('diff-stats').innerHTML = `<span class="diff-badge">A: ${lenA}</span> <span class="diff-badge">B: ${lenB}</span>`;
+            document.getElementById('diff-stats').innerHTML = `<span class="diff-badge">1: ${lenA}</span> <span class="diff-badge">2: ${lenB}</span>`;
 
             // Appliquer les nouvelles sélections avec les bons types
             this.#sims[0].setMovesSelection(offA, convA, this.#getHightLightClass(lenA, lenB));
