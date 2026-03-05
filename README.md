@@ -17,7 +17,8 @@ A java implementation of the push-swap problem
   - [x] edit mode
   - [x] title bar (with copy-clear buttons)
   - [x] addMove/deleteMove methods
-- [ ] Auto-play speed should be saved/reloaded
+- [x] Auto-play speed should be saved/reloaded
+- [ ] ⏳ En cours: Fix play button behavior (respect the rate setting, even on large stacks).
 - [ ] Position is not restored on reload.
 - [ ] Diff selection should be cleared when move list is edited.
 - [ ] Input (numbers or moves) should be verified and rejected if invalid.

@@ -1,18 +1,21 @@
 import { TwoStacks, Move, ReverseMove } from './stack.js';
 import { TwoStacksView } from './twostacksview.js';
 import { ListView } from './listView.js';
+import { AnimationRunner } from './animationRunner.js';
 
 export class PushSwapSim {
     static #VALID_MOVES = new Set(Object.values(Move));
     
+    #id;
     #container;
     #onStateChange;
-    #isPlaying = false;
     #numbers = [];
     #stacksView;
     #movesView;
+    #animationRunner;
 
     constructor(containerId, id, title = "Sim", onStateChange = null) {
+        this.#id = id;
         this.#onStateChange = onStateChange;
 
         this.#container = document.createElement('div');
@@ -32,7 +35,7 @@ export class PushSwapSim {
                     <button class="btn-action btn-play btn-play-style" style="flex:1"></button>
                     <button class="btn-action btn-stop btn-stop-style" style="flex:1" disabled></button>
                 </div>
-                <input type="range" class="speed-range" min="1" max="1000" value="100" dir="rtl">
+                <input type="range" class="speed-range" min="1" max="1000" value="100" dir="ltr">
             </div>
             <div class="ps-visualizer-anchor"></div>
         `;
@@ -45,9 +48,10 @@ export class PushSwapSim {
         this.#movesView = new ListView(movesView, id, title,{
             onItemClicked: (index) => {
                 this.#rebuildStacks(index);
+                this.#render();
             },
             onItemMouseEnter: (move, i, el) => {
-                if (this.#isPlaying) return;
+                if (this.isPlaying()) return;
                 let title = "Move " + i;
                 if (move === 'pa' || move === 'pb') {
                     const val = this.#getSnapshotValue(i);
@@ -58,11 +62,28 @@ export class PushSwapSim {
         });
         this.speedInput = this.#container.querySelector('.speed-range');
         
+        this.#animationRunner = new AnimationRunner(
+            {
+                getIndex: () => this.#movesView.getIndex(),
+                setIndex: (index) => this.setIndex(index),
+                getSize: () => this.getMoveListSize()
+            },
+            () => {
+                this.#render();
+                this.#stateChanged();
+            }
+        );
+
         this.#initEvents();
-        
+
         // Initialize stacks if no initial state was set
         if (this.#numbers.length === 0) {
             this.#numbers = [];
+        }
+
+        const savedSpeed = localStorage.getItem(`ps_speed_${this.#id}`);
+        if (savedSpeed) {
+            this.speedInput.value = savedSpeed;
         }
     }
 
@@ -73,8 +94,14 @@ export class PushSwapSim {
         this.#container.querySelector('.btn-next').onclick = () => this.step(1);
         this.#container.querySelector('.btn-prev').onclick = () => this.step(-1);
         this.#container.querySelector('.btn-play').onclick = () => this.#runAuto();
-        this.#container.querySelector('.btn-stop').onclick = () => this.#isPlaying = false;
+        this.#container.querySelector('.btn-stop').onclick = () => this.#animationRunner.stop();
         this.#container.querySelector('.btn-delete').onclick = () => this.#deleteMove();
+        
+        this.speedInput.addEventListener('input', (e) => {
+            const movesPerSec = this.#sliderToMovesPerSecond(Number.parseInt(e.target.value));
+            localStorage.setItem(`ps_speed_${this.#id}`, e.target.value);
+            console.log("speed input of "+this.#id, movesPerSec.toFixed(1) + " moves/sec");
+        });
     }
 
     getIndex() { return this.#movesView.getIndex(); }
@@ -169,7 +196,7 @@ export class PushSwapSim {
     }
 
     #addMove(op) {
-        if(this.#isPlaying) return;
+        if(this.isPlaying()) return;
         if (this.#movesView.addMove(op)) {
             this.#stacksView.applyMove(op);
             this.#render();
@@ -206,12 +233,12 @@ export class PushSwapSim {
         const noStacks = stacks.isEmpty();
         const isAtEnd = this.#movesView.getIndex() === this.getMoveListSize()-1;
         const isAtStart = this.#movesView.getIndex() < 0;
-        const blockAll = this.#isPlaying || noStacks;
+        const blockAll = this.isPlaying() || noStacks;
 
         this.#container.querySelector('.btn-play').disabled = blockAll || noMoves || isAtEnd;
         this.#container.querySelector('.btn-next').disabled = blockAll || noMoves || isAtEnd;
         this.#container.querySelector('.btn-prev').disabled = blockAll || noMoves || isAtStart;
-        this.#container.querySelector('.btn-stop').disabled = !this.#isPlaying;
+        this.#container.querySelector('.btn-stop').disabled = !this.isPlaying();
 
         this.#container.querySelectorAll('.controls-grid button').forEach(btn => {
             const op = btn.dataset.op;
@@ -232,6 +259,10 @@ export class PushSwapSim {
         this.#container.querySelector('.btn-delete').disabled = blockAll || isAtStart;
         this.#container.querySelectorAll('.btn-mode-edit').forEach(btn => btn.disabled = blockAll);
 
+        this.#stateChanged();
+    }
+
+    #stateChanged() {
         if (this.#onStateChange) this.#onStateChange();
     }
 
@@ -240,20 +271,27 @@ export class PushSwapSim {
         if (start < end) this.#movesView.applySelection(start, end, className);
     }
 
-    async #runAuto() {
-        this.setPlaying(true);
-        while (this.#movesView.getIndex() < this.getMoveListSize()-1 && this.#isPlaying) {
-            const speed = Number.parseInt(this.speedInput.value);
-            this.setIndex(this.#movesView.getIndex() + 1); 
-            await new Promise(r => setTimeout(r, speed));
-        }
-        this.setPlaying(false);
+    #sliderToMovesPerSecond(sliderValue) {
+        if (sliderValue <= 1) return 1;
+        if (sliderValue >= 1000) return 1000;
+        
+        // Logarithmic mapping: 1->1, 333->10, 666->100, 1000->1000
+        // Using log base 10 for the moves per second scale
+        const normalizedPos = (sliderValue - 1) / 999; // 0 to 1
+        const logMin = Math.log10(1);
+        const logMax = Math.log10(1000);
+        const logValue = logMin + normalizedPos * (logMax - logMin);
+        return Math.pow(10, logValue);
     }
 
-    setPlaying(val) {
-        this.#isPlaying = val;
-        this.#render();
+    #runAuto() {
+        this.fastForward(() => this.#sliderToMovesPerSecond(Number.parseInt(this.speedInput.value)));
+    }
+
+    fastForward(rateProvider) {
+        this.#animationRunner.run(rateProvider);
+		this.#render();
     }
     
-    isPlaying() { return this.#isPlaying; }
+    isPlaying() { return this.#animationRunner.isRunning() }
 }
