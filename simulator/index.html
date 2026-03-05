@@ -105,6 +105,52 @@
             0%, 100% { opacity: 0; transform: translateY(5px); }
             20%, 80% { opacity: 1; transform: translateY(0); }
         }
+    /* SVG ICONS FOR NAVIGATION BUTTONS */
+        .btn-prev::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 4px;
+            vertical-align: middle;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='2' height='12' fill='white'/%3E%3Cpath d='M10 1 L4 6 L10 11 Z' fill='white'/%3E%3C/svg%3E");
+        }
+        .btn-next::after {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-left: 4px;
+            vertical-align: middle;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 1 L8 6 L2 11 Z' fill='white'/%3E%3Crect x='10' y='0' width='2' height='12' fill='white'/%3E%3C/svg%3E");
+        }
+        .btn-play::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 4px;
+            vertical-align: middle;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 1 L8 6 L2 11 Z' fill='white'/%3E%3Cpath d='M7 1 L13 6 L7 11 Z' fill='white'/%3E%3C/svg%3E");
+        }
+        .btn-stop::before {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 4px;
+            vertical-align: middle;
+            background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='1' y='1' width='10' height='10' fill='white'/%3E%3C/svg%3E");
+        }
+        .btn-skip-diff::after {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 12px;
+            margin-left: 4px;
+            vertical-align: middle;
+            background-image: url("data:image/svg+xml,%3Csvg width='16' height='12' viewBox='0 0 16 12' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1 L7 6 L1 11 Z' fill='white'/%3E%3Cpath d='M6 1 L12 6 L6 11 Z' fill='white'/%3E%3Crect x='14' y='0' width='2' height='12' fill='white'/%3E%3C/svg%3E");
+        }
     </style>
 </head>
 <body>
@@ -120,15 +166,15 @@
 
     <div id="sync-controls" style="display: none;">
         <span style="font-size: 11px; font-weight: bold; color: var(--accent);">SYNC:</span>
-        <button id="btn-sync-prev" class="btn-header">PREV</button>
-        <button id="btn-sync-next" class="btn-header">NEXT</button>
-        <button id="btn-sync-play" class="btn-header btn-play-style">PLAY ▶️</button>
-        <button id="btn-sync-stop" class="btn-header btn-stop-style" disabled>STOP ⏹️</button>
+        <button id="btn-sync-prev" class="btn-header btn-prev btn-play-style">PREV</button>
+        <button id="btn-sync-next" class="btn-header btn-next btn-play-style">NEXT</button>
+        <button id="btn-sync-play" class="btn-header btn-play btn-play-style">FAST FWD</button>
+        <button id="btn-sync-stop" class="btn-header btn-stop btn-stop-style" disabled>STOP</button>
 
         <button id="btn-find-main" class="btn-header" style="background: #6a1b9a">FIND NEXT DIFF 🔍</button>
         
         <div id="merge-tools" class="merge-zone" style="display: none;">
-            <button id="btn-skip-diff" class="btn-merge">SKIP DIFF ⏭️</button>
+            <button id="btn-skip-diff" class="btn-merge btn-skip-diff">SKIP DIFF</button>
             <div id="diff-stats" style="display: flex; gap: 5px; align-items: center; margin: 0 5px;"></div>
             <button id="btn-merge-a-to-b" class="btn-merge">1 → 2</button>
             <button id="btn-merge-b-to-a" class="btn-merge">2 ← 1</button>

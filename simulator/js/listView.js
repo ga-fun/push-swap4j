@@ -241,6 +241,42 @@ export class ListView {
 
     getList() { return this.#list; }
 
+    addMove(op) {
+        this.#currentIndex++;
+        let result = true;
+        if (this.#editMode === 'truncate') {
+            this.#list = this.#list.slice(0, this.#currentIndex);
+            this.#list.push(op);
+        } else if (this.#editMode === 'insert') {
+            // Insert at current index + 1
+            this.#list.splice(this.#currentIndex, 0, op);
+        } else if (this.#editMode === 'overwrite') {
+            // Overwrite after current index
+            if (this.#currentIndex < this.#list.length) {
+                if (this.#list[this.#currentIndex] === op) {
+                    console.log("Overwrite with no change");
+                    result = false;
+                } else {
+                    this.#list[this.#currentIndex] = op;
+                }
+            } else {
+                this.#list.push(op);
+            }
+        }
+        if (result) {
+            this.#render();
+        }
+        return result;
+    }
+
+    deleteMove() {
+        if (this.#currentIndex < 0) return null;
+        const deleted = this.#list.splice(this.#currentIndex, 1)[0];
+        this.#currentIndex--;
+        this.#render();
+        return deleted;
+    }
+
     /**
      * Applique une sélection sur une plage d'éléments avec un type spécifique
      * @param {number} start - Index de début (inclus)

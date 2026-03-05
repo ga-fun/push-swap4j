@@ -27,12 +27,10 @@ export class PushSwapSim {
                 </div>
                 <button class="btn-action btn-delete btn-stop-style" disabled>DELETE CURRENT ⌫</button>
                 <div style="display: flex; gap: 3px;">
-                    <button class="btn-action btn-prev btn-blue-style" style="flex:1">PREV</button>
-                    <button class="btn-action btn-next btn-blue-style" style="flex:1">NEXT</button>
-                </div>
-                <div style="display: flex; gap: 3px;">
-                    <button class="btn-action btn-play btn-play-style" style="flex:1">PLAY ▶️</button>
-                    <button class="btn-action btn-stop btn-stop-style" style="flex:1" disabled>STOP ⏹️</button>
+                    <button class="btn-action btn-prev btn-play-style" style="flex:1"></button>
+                    <button class="btn-action btn-next btn-play-style" style="flex:1"></button>
+                    <button class="btn-action btn-play btn-play-style" style="flex:1"></button>
+                    <button class="btn-action btn-stop btn-stop-style" style="flex:1" disabled></button>
                 </div>
                 <input type="range" class="speed-range" min="1" max="1000" value="100" dir="rtl">
             </div>
@@ -163,35 +161,19 @@ export class PushSwapSim {
     }
 
     #deleteMove() {
-        const index = this.#movesView.getIndex();
-        let list = [...this.#movesView.getList()];
-        if (index >= 0) {
-            const deleted = list.splice(index, 1);
-            this.#movesView.update(list, index-1);
-            this.#stacksView.applyMove(ReverseMove[deleted[0]]);
+        const deleted = this.#movesView.deleteMove();
+        if (deleted) {
+            this.#stacksView.applyMove(ReverseMove[deleted]);
             this.#render();
         }
     }
 
     #addMove(op) {
         if(this.#isPlaying) return;
-        let idx = this.#movesView.getIndex();
-        let list = [...this.#movesView.getList()];
-        idx++;
-        if (this.editMode === 'truncate') {
-            list = list.slice(0, idx);
-            list.push(op);
-        } else if (this.editMode === 'insert') {
-            // Insert at current index + 1
-            list.splice(idx, 0, op);
-        } else if (this.editMode === 'overwrite') {
-            // Overwrite after current index
-            if (idx < list.length) list[idx] = op;
-            else list.push(op);
+        if (this.#movesView.addMove(op)) {
+            this.#stacksView.applyMove(op);
+            this.#render();
         }
-        this.#movesView.update(list, idx);
-        this.#stacksView.applyMove(op);
-        this.#render();
     }
 
     step(dir) {
