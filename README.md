@@ -18,10 +18,17 @@ A java implementation of the push-swap problem
   - [x] title bar (with copy-clear buttons)
   - [x] addMove/deleteMove methods
 - [x] Auto-play speed should be saved/reloaded
-- [ ] ⏳ En cours: Fix play button behavior (respect the rate setting, even on large stacks).
+- [x] Fix play button behavior (respect the rate setting, even on large stacks).
+- [ ] Fix top bar button are not grayed out when they should be.
 - [ ] Position is not restored on reload.
 - [ ] Diff selection should be cleared when move list is edited.
 - [ ] Input (numbers or moves) should be verified and rejected if invalid.
 - [ ] Typing should be forbidden in move fields (maybe a paste button should be added). One can corrupt the list by typing and there's Chrome typo warnings when clicking on a move.
 - [ ] Fix issues in move list scroll when adding/removing moves
 - [ ] Should we keep a 200 moves limit on convergence finder?
+
+
+## Known bug
+Sometimes, during a synchronized fast-forward, the progress of the lists can become slightly out of sync.
+
+This happens because the two animations are asynchronous. Each frame is calculated based on the last progress in the move list and the time elapsed since the last frame was displayed. Since this calculation doesn't occur at precisely the same time in both lists, the progress may be slightly different.

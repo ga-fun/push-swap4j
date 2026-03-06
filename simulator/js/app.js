@@ -83,6 +83,7 @@ export class PushSwapApp {
     // --- LOGIQUE CORE ---
 
     #refreshGlobalUI() {
+        console.log("Refreshing global app");
         this.#updateSyncStatus();
         this.#updateSyncToolbar();
     }
@@ -113,24 +114,15 @@ export class PushSwapApp {
 
     #syncStep(dir) { this.#sims.forEach(s => s.step(dir)); }
 
-    #syncStop() {
-        this.#sims.forEach(s => s.setPlaying(false));
+    async #syncPlay() {
+        const speed = () => this.#sims[0].getFastForwardSpeed();
+        this.#sims.forEach(s => s.fastForward(speed));
         this.#updateSyncToolbar();
     }
-
-    async #syncPlay() {
-        this.#sims.forEach(s => s.setPlaying(true));
+    
+    #syncStop() {
+        this.#sims.forEach(s => s.stopFastForward());
         this.#updateSyncToolbar();
-
-        while (this.#sims.every(s => s.isPlaying())) {
-            let moved = false;
-            this.#sims.forEach(s => { 
-                if (s.step(1)) moved = true;
-            });
-            if (!moved) break;
-            await new Promise(r => setTimeout(r, Number.parseInt(this.#sims[0].speedInput.value)));
-        }
-        this.#syncStop();
     }
 
     // --- COMPARAISON & DIFF ---
@@ -143,8 +135,6 @@ export class PushSwapApp {
     #updateSyncStatus() {
         const indicator = document.getElementById('stack-match-indicator');
         const btnFind = document.getElementById('btn-find-main');
-        if (!indicator || this.#sims.length < 2) return;
-        
         const isMatch = this.#checkIfMatch();
         indicator.innerText = isMatch ? "STACKS IDENTICAL" : "STACKS DIVERGENT";
         indicator.className = isMatch ? "match-true" : "match-false";

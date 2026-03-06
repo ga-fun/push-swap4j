@@ -1,7 +1,7 @@
 import { TwoStacks, Move, ReverseMove } from './stack.js';
 import { TwoStacksView } from './twostacksview.js';
 import { ListView } from './listView.js';
-import { AnimationRunner } from './animationRunner.js';
+import { AnimationRunner, TimeBasedConductor } from './animationRunner.js';
 
 export class PushSwapSim {
     static #VALID_MOVES = new Set(Object.values(Move));
@@ -10,6 +10,7 @@ export class PushSwapSim {
     #container;
     #onStateChange;
     #numbers = [];
+    #speedInput;
     #stacksView;
     #movesView;
     #animationRunner;
@@ -60,7 +61,7 @@ export class PushSwapSim {
                 el.title = title;
             }
         });
-        this.speedInput = this.#container.querySelector('.speed-range');
+        this.#speedInput = this.#container.querySelector('.speed-range');
         
         this.#animationRunner = new AnimationRunner(
             {
@@ -83,7 +84,7 @@ export class PushSwapSim {
 
         const savedSpeed = localStorage.getItem(`ps_speed_${this.#id}`);
         if (savedSpeed) {
-            this.speedInput.value = savedSpeed;
+            this.#speedInput.value = savedSpeed;
         }
     }
 
@@ -94,10 +95,10 @@ export class PushSwapSim {
         this.#container.querySelector('.btn-next').onclick = () => this.step(1);
         this.#container.querySelector('.btn-prev').onclick = () => this.step(-1);
         this.#container.querySelector('.btn-play').onclick = () => this.#runAuto();
-        this.#container.querySelector('.btn-stop').onclick = () => this.#animationRunner.stop();
+        this.#container.querySelector('.btn-stop').onclick = () => this.stopFastForward();
         this.#container.querySelector('.btn-delete').onclick = () => this.#deleteMove();
         
-        this.speedInput.addEventListener('input', (e) => {
+        this.#speedInput.addEventListener('input', (e) => {
             const movesPerSec = this.#sliderToMovesPerSecond(Number.parseInt(e.target.value));
             localStorage.setItem(`ps_speed_${this.#id}`, e.target.value);
             console.log("speed input of "+this.#id, movesPerSec.toFixed(1) + " moves/sec");
@@ -285,13 +286,19 @@ export class PushSwapSim {
     }
 
     #runAuto() {
-        this.fastForward(() => this.#sliderToMovesPerSecond(Number.parseInt(this.speedInput.value)));
+        this.fastForward(() => this.getFastForwardSpeed());
     }
 
     fastForward(rateProvider) {
-        this.#animationRunner.run(rateProvider);
+        this.#animationRunner.run(new TimeBasedConductor(rateProvider));
 		this.#render();
     }
     
+    stopFastForward() {
+        this.#animationRunner.stop();
+    }
+    
     isPlaying() { return this.#animationRunner.isRunning() }
+    
+    getFastForwardSpeed() { return this.#sliderToMovesPerSecond(Number.parseInt(this.#speedInput.value)) }
 }

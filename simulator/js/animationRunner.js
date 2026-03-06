@@ -1,9 +1,36 @@
+export class TimeBasedConductor {
+    #getMovesPerSecond;
+    #lastTime;
+    #lastTargetIndex;
+
+    constructor(getMovesPerSecond) {
+        this.#getMovesPerSecond = getMovesPerSecond;
+    }
+
+    start(target) {
+        this.#lastTime = performance.now();
+        this.#lastTargetIndex = target.getIndex();
+    }
+
+    getTargetIndex(target) {
+        const movesPerSecond = this.#getMovesPerSecond();
+        const now = performance.now();
+        const deltaTime = now - this.#lastTime;
+        const deltaIndex = Math.floor(deltaTime * movesPerSecond / 1000);
+        if (deltaIndex > 0) {
+            this.#lastTargetIndex = this.#lastTargetIndex + deltaIndex;
+            this.#lastTime = now;
+            return Math.min(this.#lastTargetIndex, target.getSize() - 1);
+        } else {
+            return null;
+        }
+    }
+}
+
 export class AnimationRunner {
     #target;
     #onAnimationEnd;
     #isRunning = false;
-    #lastTime;
-    #lastMoveIndex;
     #animateFrame;
 
     constructor(target, onAnimationEnd) {
@@ -11,12 +38,11 @@ export class AnimationRunner {
         this.#onAnimationEnd = onAnimationEnd;
     }
 
-    run(getMovesPerSecond) {
+    run(conductor) {
         if (this.#isRunning) return;
         
         this.#isRunning = true;
-        this.#lastTime = performance.now();
-        this.#lastMoveIndex = this.#target.getIndex();
+        conductor.start(this.#target);
         
         const animate = (currentTime) => {
             if (!this.#isRunning || this.#target.getIndex() >= this.#target.getSize() - 1) {
@@ -24,12 +50,8 @@ export class AnimationRunner {
                 return;
             }
             
-            const movesPerSecond = getMovesPerSecond();
-            const deltaTime = currentTime - this.#lastTime;
-            const expectedMoveIndex = Math.floor(this.#lastMoveIndex + (deltaTime * movesPerSecond / 1000));
-            const targetIndex = Math.min(expectedMoveIndex, this.#target.getSize() - 1);
-            
-            if (targetIndex > this.#target.getIndex()) {
+            const targetIndex = conductor.getTargetIndex(this.#target);
+            if (targetIndex !== null) {
                 if ('requestIdleCallback' in globalThis) {
                     requestIdleCallback(() => {
                         if (this.#isRunning) {
@@ -39,15 +61,9 @@ export class AnimationRunner {
                 } else {
                     this.#target.setIndex(targetIndex);
                 }
-                this.#lastMoveIndex = targetIndex;
-                this.#lastTime = currentTime;
             }
             
-            if (targetIndex < this.#target.getSize() - 1) {
-                this.#animateFrame = requestAnimationFrame(animate);
-            } else {
-                this.stop();
-            }
+            this.#animateFrame = requestAnimationFrame(animate);
         };
         
         this.#animateFrame = requestAnimationFrame(animate);
@@ -60,7 +76,6 @@ export class AnimationRunner {
             this.#animateFrame = null;
         }
         if (this.#onAnimationEnd) {
-            console.log("Notifying end of animation"); //TODO
             if (this.#onAnimationEnd) {
                 this.#onAnimationEnd();
             }
