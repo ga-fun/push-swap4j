@@ -19,7 +19,7 @@ A java implementation of the push-swap problem
   - [x] addMove/deleteMove methods
 - [x] Auto-play speed should be saved/reloaded
 - [x] Fix play button behavior (respect the rate setting, even on large stacks).
-- [ ] Fix top bar button are not grayed out when they should be.
+- [x] Fix top bar buttons are not grayed out when they should be.
 - [ ] Position is not restored on reload.
 - [ ] Diff selection should be cleared when move list is edited.
 - [ ] Input (numbers or moves) should be verified and rejected if invalid.

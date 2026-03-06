@@ -83,7 +83,6 @@ export class PushSwapApp {
     // --- LOGIQUE CORE ---
 
     #refreshGlobalUI() {
-        console.log("Refreshing global app");
         this.#updateSyncStatus();
         this.#updateSyncToolbar();
     }
@@ -143,12 +142,16 @@ export class PushSwapApp {
     }
 
     #updateSyncToolbar() {
+        const allAtEnd = this.#sims.every(s => s.getIndex() >= s.getMoveListSize() - 1);
+        const allAtStart = this.#sims.every(s => s.getIndex() < 0);
         const anyPlaying = this.#sims.some(s => s.isPlaying());
         const anyEmpty = this.#sims.some(s => s.getMoveListSize() === 0);
         
-        document.getElementById('btn-sync-play').disabled = anyPlaying || anyEmpty;
+        document.getElementById('btn-sync-play').disabled = anyPlaying || anyEmpty || allAtEnd;
         document.getElementById('btn-sync-stop').disabled = !anyPlaying;
         document.getElementById('btn-find-main').disabled = anyPlaying || anyEmpty;
+        document.getElementById('btn-sync-next').disabled = anyPlaying || allAtEnd;
+        document.getElementById('btn-sync-prev').disabled = anyPlaying || allAtStart;
     }
 
     #findNextDiff() {
@@ -191,7 +194,6 @@ export class PushSwapApp {
     }
 
     #applyHighlight() {
-        console.log("findConvergence result", this.#lastDiff);
         const { offA, offB, convA, convB } = this.#lastDiff;
         
         if (!convA || !convB) {
