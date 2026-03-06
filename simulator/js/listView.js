@@ -1,3 +1,5 @@
+import { Feedback } from './feedback.js';
+
 export class ListView {
     #id;
     #container;
@@ -26,10 +28,11 @@ export class ListView {
                 <span>${title}</span> <span class="element-count"> - </span>
                 <div class="toolbar-moves">
                     <button class="icon-btn btn-copy" title="Copy">📋</button>
+                    <button class="icon-btn btn-paste" title="Paste">📄</button>
                     <button class="icon-btn btn-clear" title="Clear">🗑️</button>
                 </div>
             </div>
-            <div class="moves-display" contenteditable="true"></div>
+            <div class="moves-display"></div>
             <div class="edit-mode-container" style="margin-top: 3px">
                     <button class="btn-action btn-mode-edit active" data-mode="truncate">TRUNC</button>
                     <button class="btn-action btn-mode-edit" data-mode="insert">INS</button>
@@ -52,6 +55,7 @@ export class ListView {
         }
 
         container.querySelector('.btn-copy').onclick = () => this.#copyMoves();
+        container.querySelector('.btn-paste').onclick = () => this.#pasteMoves();
         container.querySelector('.btn-clear').onclick = () => this.#clearMoves();
         container.querySelector('.moves-display').oninput = () => { this.#syncMoves(); this.#saveList(); };
         container.querySelectorAll('.btn-mode-edit').forEach(btn => {
@@ -98,15 +102,6 @@ export class ListView {
             // Seul l'index a changé, on met juste à jour les classes
             this.#updateClassesOnly(oldIndex);
         }
-        if (indexChanged && save) {
-            this.#saveIndex();
-        }
-    }
-
-    #saveIndex() {
-        //TODO Should do debouncing
-        // For now, save immediately
-        localStorage.setItem(`ps_idx_${this.#id}`, this.#currentIndex); 
     }
 
     #saveEditMode() {
@@ -136,12 +131,33 @@ export class ListView {
         this.#render();
     }
     #copyMoves() { navigator.clipboard.writeText(this.getMovesList().join(' ')); }
+    #pasteMoves() { 
+        const pasteBtn = this.#container.querySelector('.btn-paste');
+        navigator.clipboard.readText().then(text => {
+            try {
+                this.#syncMoves(text);
+            } catch (error) {
+                Feedback.animateButton(pasteBtn, error.message, 1500, 'bottom');
+            }
+        }).catch(err => {
+            Feedback.animateButton(pasteBtn, 'Clipboard error!', 1500, 'bottom');
+        });
+    }
     #clearMoves() { 
         this.update([], -1);
     }
-    #syncMoves() {
-        const text = this.#listContainer.querySelector('.moves-display').innerText.replace(/,/g, ' ');
-        let moves = text.trim().split(/\s+/).filter(x => x !== "");
+
+    #syncMoves(text=null) {
+        if (text === null) {
+            text = this.#listContainer.querySelector('.moves-display').innerText;
+        }
+        let moves = text.trim().replaceAll(',', ' ').split(/\s+/).filter(x => x !== "");
+
+        for (let move of moves) {
+            if (!['sa', 'sb', 'ss', 'ra', 'rb', 'rr', 'rra', 'rrb', 'rrr', 'pa', 'pb'].includes(move)) {
+                throw new Error('Invalid move: ' + move);
+            }
+        }
 
         if (this.#currentIndex >= moves.length) this.#currentIndex = moves.length-1;
         this.update(moves, this.#currentIndex);
@@ -157,7 +173,7 @@ export class ListView {
         this.#list.forEach((item, i) => {
             const span = document.createElement('span');
             this.#style(span, i);
-            span.innerText = item;
+            span.innerText = item + (i < this.#list.length - 1 ? ' ' : '');
 
             span.onclick = () => {
                 this.setIndex(i);
@@ -236,7 +252,6 @@ export class ListView {
         
         // Optimisation: mise à jour des classes seulement
         this.#updateClassesOnly(oldIndex);
-        this.#saveIndex();
     }
 
     getList() { return this.#list; }
@@ -254,7 +269,6 @@ export class ListView {
             // Overwrite after current index
             if (this.#currentIndex < this.#list.length) {
                 if (this.#list[this.#currentIndex] === op) {
-                    console.log("Overwrite with no change");
                     result = false;
                 } else {
                     this.#list[this.#currentIndex] = op;
@@ -295,7 +309,7 @@ export class ListView {
         });
         
         // Appliquer la nouvelle sélection
-        for (let i = start; i <= end; i++) {
+        for (let i = Math.max(0, start); i <= end; i++) {
             spans[i].classList.add(`move-diff-${type}`);
         }
     }

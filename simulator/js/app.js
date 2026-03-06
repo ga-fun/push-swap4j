@@ -1,5 +1,6 @@
 import { PushSwapSim } from './pushswapsim.js';
 import { ConvergenceFinder } from './convergenceFinder.js';
+import { Feedback } from './feedback.js';
 
 export class PushSwapApp {
     #sims = [];
@@ -59,25 +60,6 @@ export class PushSwapApp {
             el.onclick = null; // On nettoie l'ancien onclick s'il existe
             el.addEventListener('click', fn);
         }
-    }
-
-    #animateButtonFeedback(message, duration = 1500) {
-        const btn = document.getElementById('btn-find-main');
-        btn.classList.add('btn-no-diff');
-        
-        // Créer ou mettre à jour une balise style pour le message personnalisé
-        let styleEl = document.getElementById('dynamic-btn-style');
-        if (!styleEl) {
-            styleEl = document.createElement('style');
-            styleEl.id = 'dynamic-btn-style';
-            document.head.appendChild(styleEl);
-        }
-        styleEl.textContent = `.btn-no-diff::after { content: '${message}' !important; }`;
-        
-        // Restaurer le bouton après l'animation
-        setTimeout(() => {
-            btn.classList.remove('btn-no-diff');
-        }, duration);
     }
 
     // --- LOGIQUE CORE ---
@@ -159,7 +141,7 @@ export class PushSwapApp {
         let offA = s1.getIndex()+1, offB = s2.getIndex()+1;
         let found = false;
 
-        while (offA < s1.getMoveListSize() || offB < s2.getMoveListSize()) {
+        while (offA < s1.getMoveListSize() && offB < s2.getMoveListSize()) {
             if (s1.getMoveAt(offA) !== s2.getMoveAt(offB)) { found = true; break; }
             offA++; offB++;
         }
@@ -168,7 +150,7 @@ export class PushSwapApp {
             this.#lastDiff.offA = offA; this.#lastDiff.offB = offB;
             this.#findConvergence(offA, offB);
         } else {
-            this.#animateButtonFeedback('No differences found!');
+            Feedback.animateButton(document.getElementById('btn-find-main'), 'No differences found!');
         }
     }
 
@@ -197,7 +179,7 @@ export class PushSwapApp {
         const { offA, offB, convA, convB } = this.#lastDiff;
         
         if (!convA || !convB) {
-            this.#animateButtonFeedback('No convergence found!');
+            Feedback.animateButton(document.getElementById('btn-find-main'), 'No convergence found!');
         } else {
             const lenA = convA - offA, lenB = convB - offB;
             document.getElementById('diff-stats').innerHTML = `<span class="diff-badge">1: ${lenA}</span> <span class="diff-badge">2: ${lenB}</span>`;

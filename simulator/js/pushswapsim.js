@@ -99,9 +99,7 @@ export class PushSwapSim {
         this.#container.querySelector('.btn-delete').onclick = () => this.#deleteMove();
         
         this.#speedInput.addEventListener('input', (e) => {
-            const movesPerSec = this.#sliderToMovesPerSecond(Number.parseInt(e.target.value));
             localStorage.setItem(`ps_speed_${this.#id}`, e.target.value);
-            console.log("speed input of "+this.#id, movesPerSec.toFixed(1) + " moves/sec");
         });
     }
 
