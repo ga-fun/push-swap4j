@@ -24,7 +24,6 @@ A java implementation of the push-swap problem
   - [x] Check move paste.
   - [ ] Check number paste.
 - [x] Typing should be forbidden in move fields (maybe a paste button should be added). One can corrupt the list by typing and there's Chrome typo warnings when clicking on a move.
-- [ ] Moves added with buttons are no more saved
 - [ ] Diff selection should be cleared when move list is edited.
 - [ ] Fix issues in move list scroll when adding/removing moves
 - [ ] Should we keep a 200 moves limit on convergence finder?

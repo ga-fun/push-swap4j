@@ -1,4 +1,5 @@
 import { Feedback } from './feedback.js';
+import { Move } from './stack.js';
 
 export class ListView {
     #id;
@@ -154,7 +155,7 @@ export class ListView {
         let moves = text.trim().replaceAll(',', ' ').split(/\s+/).filter(x => x !== "");
 
         for (let move of moves) {
-            if (!['sa', 'sb', 'ss', 'ra', 'rb', 'rr', 'rra', 'rrb', 'rrr', 'pa', 'pb'].includes(move)) {
+            if (!Object.values(Move).includes(move)) {
                 throw new Error('Invalid move: ' + move);
             }
         }
@@ -278,6 +279,7 @@ export class ListView {
             }
         }
         if (result) {
+            this.#saveList();
             this.#render();
         }
         return result;
@@ -287,6 +289,7 @@ export class ListView {
         if (this.#currentIndex < 0) return null;
         const deleted = this.#list.splice(this.#currentIndex, 1)[0];
         this.#currentIndex--;
+        this.#saveList();
         this.#render();
         return deleted;
     }
