@@ -33,9 +33,7 @@ export class PushSwapApp {
         btn.classList.toggle('active', this.#compareMode);
 
         const savedStack = localStorage.getItem('ps_global_stack') || "";
-        document.getElementById('globalInput').value = savedStack;
-        
-        this.#applyToAll();
+        this.#applyToAll(savedStack);
     }
 
     #initEventListeners() {
@@ -77,20 +75,59 @@ export class PushSwapApp {
 
     #generateRandom() {
         const size = Number.parseInt(document.getElementById('randomSize').value) || 100;
-        const arr = Array.from({length: size}, (_, i) => i).sort(() => Math.random() - 0.5);
-        document.getElementById('globalInput').value = arr.join(' ');
-        this.#applyToAll();
+        const numbers = Array.from({length: size}, (_, i) => i).sort(() => Math.random() - 0.5);
+        this.#applyToAll(numbers.join(' '));
     }
 
-    #applyToAll() {
-        const val = document.getElementById('globalInput').value;
+    #applyToAll(input = null) {
+        const val = input || document.getElementById('globalInput').value;
+        let numbers;
+        try {
+            numbers = this.#parseNumbers(val);
+        } catch (error) {
+            if (input) {
+                console.error('Error converting input to numbers:', error.message);
+                console.error('Input value:', val);
+            } else {
+                // If we're applying from the apply button
+                Feedback.animateButton(document.getElementById('btn-apply'), error.message, 3000, 'bottom');
+            }
+            return; // Exit early if conversion fails
+        }
         localStorage.setItem('ps_global_stack', val);
-        const numbers = val.replace(/,/g, ' ').trim().split(/\s+/).filter(x => x !== "").map(Number);
-        document.getElementById('randomSize').value = numbers.length;
+        if (input) {
+            document.getElementById('globalInput').value = val;
+        }
         this.#sims.forEach(sim => { 
             sim.setInitialState(numbers); 
             sim.setIndex(-1); 
         });
+    }
+
+    #parseNumbers(val) {
+        const parts = val.replaceAll(',', ' ').trim().split(/\s+/).filter(x => x !== "");
+        const numbers = parts.map(Number);
+        
+        // Check if any conversion resulted in NaN and identify problematic values
+        const invalidValues = parts.filter((part, index) => Number.isNaN(numbers[index]));
+        if (invalidValues.length > 0) {
+            throw new Error(`Could not parse these values: ${invalidValues.join(', ')}`);
+        }
+        
+        // Check if all numbers are integers
+        const nonIntegerValues = numbers.filter(num => !Number.isInteger(num));
+        if (nonIntegerValues.length > 0) {
+            throw new Error(`These values are not integers: ${nonIntegerValues.join(', ')}`);
+        }
+        
+        // Check for duplicates
+        const duplicates = numbers.filter((num, index) => numbers.indexOf(num) !== index);
+        const uniqueDuplicates = [...new Set(duplicates)];
+        if (uniqueDuplicates.length > 0) {
+            throw new Error(`Duplicate values found: ${uniqueDuplicates.join(', ')}`);
+        }
+        
+        return numbers;
     }
 
     #syncStep(dir) { this.#sims.forEach(s => s.step(dir)); }

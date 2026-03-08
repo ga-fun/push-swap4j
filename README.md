@@ -20,9 +20,9 @@ A java implementation of the push-swap problem
 - [x] Auto-play speed should be saved/reloaded
 - [x] Fix play button behavior (respect the rate setting, even on large stacks).
 - [x] Fix top bar buttons are not grayed out when they should be.
-- [ ] Input (numbers or moves) should be verified and rejected if invalid.
+- [x] Input (numbers or moves) should be verified and rejected if invalid.
   - [x] Check move paste.
-  - [ ] Check number paste.
+  - [x] Check number paste.
 - [x] Typing should be forbidden in move fields (maybe a paste button should be added). One can corrupt the list by typing and there's Chrome typo warnings when clicking on a move.
 - [ ] Diff selection should be cleared when move list is edited.
 - [ ] Fix issues in move list scroll when adding/removing moves
