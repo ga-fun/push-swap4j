@@ -98,6 +98,7 @@ export class PushSwapApp {
         if (input) {
             document.getElementById('globalInput').value = val;
         }
+        document.getElementById('randomSize').value = numbers.length;
         this.#sims.forEach(sim => { 
             sim.setInitialState(numbers); 
             sim.setIndex(-1); 

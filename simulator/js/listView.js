@@ -63,7 +63,10 @@ export class ListView {
             btn.onclick = () => {
                 this.#editMode = btn.dataset.mode;
                 this.#saveEditMode(); 
-                this.#render();
+                // Only update button active states, don't rebuild the whole list
+                this.#container.querySelectorAll('.btn-mode-edit').forEach(b => {
+                    b.classList.toggle('active', b.dataset.mode === this.#editMode);
+                });
             };
         });
 
@@ -193,7 +196,11 @@ export class ListView {
             btn.classList.toggle('active', btn.dataset.mode === this.#editMode);
         });
 
-        this.#scrollToSelected();
+        // Invalider le cache de plage visible après reconstruction DOM
+        this.#visibleRange = { start: -1, end: -1 };
+        
+        // Déferer le scroll pour laisser le temps au DOM de se mettre à jour
+        requestAnimationFrame(() => this.#scrollToSelected());
     }
 
     /** Scroll automatique vers l'élément actif */
@@ -201,12 +208,17 @@ export class ListView {
         // Optimisation: utiliser le cache de plage visible pour éviter les calculs
         const targetIndex = this.#currentIndex;
         
+        // Si le cache est invalide, le mettre à jour immédiatement
+        if (this.#visibleRange.start === -1) {
+            this.#updateVisibleRange();
+        }
+        
         // Si l'index cible est dans la plage visible, pas besoin de scroller
-        if (targetIndex > this.#visibleRange.start && targetIndex <= this.#visibleRange.end) {
+        if (targetIndex >= this.#visibleRange.start && targetIndex <= this.#visibleRange.end) {
             return;
         }
         
-        const current = currentElement || this.#listContainer.querySelector('.move-current');
+        const current = currentElement || this.#listContainer.children[targetIndex];
         if (!current) return;
 
         // Sinon, scroller et mettre à jour le cache
@@ -235,7 +247,8 @@ export class ListView {
             const span = spans[i];
             const spanRect = span.getBoundingClientRect();
             
-            if (spanRect.bottom >= containerTop && spanRect.top <= containerBottom) {
+            // Require full visibility: element must be completely within container bounds
+            if (spanRect.top >= containerTop && spanRect.bottom <= containerBottom) {
                 if (start === -1) start = i;
                 end = i;
             }
@@ -356,7 +369,6 @@ export class ListView {
                 }
             }
         }
-        
         this.#scrollToSelected(selectedElement);
     }
 
