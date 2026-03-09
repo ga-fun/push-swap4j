@@ -139,7 +139,7 @@ export class PushSwapSim {
 
     getMoveListSize() { return this.#movesView.getList().length; }
 
-    getMoveAt(index) { return this.#movesView.getList()[index].toLowerCase(); }
+    getMoveAt(index) { return this.#movesView.getList()[index]; }
 
     setMovesList(newList) {
         if (!Array.isArray(newList)) throw new TypeError(`Expected Array, got: ${typeof newList}`);
@@ -196,10 +196,9 @@ export class PushSwapSim {
 
     #addMove(op) {
         if(this.isPlaying()) return;
-        if (this.#movesView.addMove(op)) {
-            this.#stacksView.applyMove(op);
-            this.#render();
-        }
+        this.#movesView.addMove(op);
+        this.#stacksView.applyMove(op);
+        this.#render();
     }
 
     step(dir) {

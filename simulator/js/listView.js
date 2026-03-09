@@ -28,8 +28,8 @@ export class ListView {
             <div style="font-weight: bold; font-size: 11px; color: #888; display:flex; justify-content:space-between; align-items:center;">
                 <span>${title}</span> <span class="element-count"> - </span>
                 <div class="toolbar-moves">
-                    <button class="icon-btn btn-copy" title="Copy">📋</button>
-                    <button class="icon-btn btn-paste" title="Paste">📄</button>
+                    <button class="icon-btn btn-copy" title="Copy">📄</button>
+                    <button class="icon-btn btn-paste" title="Paste">📋</button>
                     <button class="icon-btn btn-clear" title="Clear">🗑️</button>
                 </div>
             </div>
@@ -131,7 +131,7 @@ export class ListView {
         }
         this.#render();
     }
-    #copyMoves() { navigator.clipboard.writeText(this.getMovesList().join(' ')); }
+    #copyMoves() { navigator.clipboard.writeText(this.#list.join(' ')); }
     #pasteMoves() { 
         const pasteBtn = this.#container.querySelector('.btn-paste');
         navigator.clipboard.readText().then(text => {
@@ -152,7 +152,7 @@ export class ListView {
         if (text === null) {
             text = this.#listContainer.querySelector('.moves-display').innerText;
         }
-        let moves = text.trim().replaceAll(',', ' ').split(/\s+/).filter(x => x !== "");
+        let moves = text.trim().replaceAll(',', ' ').split(/\s+/).filter(x => x !== "").map(x => x.toLowerCase());
 
         for (let move of moves) {
             if (!Object.values(Move).includes(move)) {
@@ -259,7 +259,6 @@ export class ListView {
 
     addMove(op) {
         this.#currentIndex++;
-        let result = true;
         if (this.#editMode === 'truncate') {
             this.#list = this.#list.slice(0, this.#currentIndex);
             this.#list.push(op);
@@ -269,20 +268,13 @@ export class ListView {
         } else if (this.#editMode === 'overwrite') {
             // Overwrite after current index
             if (this.#currentIndex < this.#list.length) {
-                if (this.#list[this.#currentIndex] === op) {
-                    result = false;
-                } else {
-                    this.#list[this.#currentIndex] = op;
-                }
+                this.#list[this.#currentIndex] = op;
             } else {
                 this.#list.push(op);
             }
         }
-        if (result) {
-            this.#saveList();
-            this.#render();
-        }
-        return result;
+        this.#saveList();
+        this.#render();
     }
 
     deleteMove() {
