@@ -138,9 +138,9 @@ export class TwoStacks {
         [Move.RRR]: (stacks) => { stacks.getStackA().reverseRotate(); stacks.getStackB().reverseRotate(); }
     };
 
-    constructor(numbersA = [], numbersB = []) {
-        this.#a = new Stack(numbersA);
-        this.#b = new Stack(numbersB);
+	constructor(inputA = [], inputB = []) {
+        this.#a = (inputA instanceof Stack) ? inputA : new Stack(inputA);
+        this.#b = (inputB instanceof Stack) ? inputB : new Stack(inputB);
     }
 
     getStackA() {

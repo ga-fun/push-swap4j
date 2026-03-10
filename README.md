@@ -24,9 +24,10 @@ A java implementation of the push-swap problem
   - [x] Check move paste.
   - [x] Check number paste.
 - [x] Typing should be forbidden in move fields (maybe a paste button should be added). One can corrupt the list by typing and there's Chrome typo warnings when clicking on a move.
-- [ ] Diff selection should be cleared when move list is edited.
 - [x] Fix issues in move list scroll when adding/removing moves
-- [ ] Should we keep a 200 moves limit on convergence finder?
+- [x] Remove the 200 moves limit on convergence finder?
+- [ ] When start of find convergence zone are different, copy button should not be visible
+- [ ] Diff selection should be cleared when move list is edited.
 
 
 ## Known bug
