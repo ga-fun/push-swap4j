@@ -3,9 +3,10 @@ import { ConvergenceFinder } from './convergenceFinder.js';
 import { Feedback } from './feedback.js';
 
 export class PushSwapApp {
+    static #EMPTY_LAST_DIFF = { offA: -1, offB: -1, convA: -1, convB: -1, prevEquals: false};
     #sims = [];
     #compareMode;
-    #lastDiff = { offA: -1, offB: -1, convA: -1, convB: -1 };
+    #lastDiff = PushSwapApp.#EMPTY_LAST_DIFF;
     
     constructor() {
         this.#compareMode = localStorage.getItem('ps_compare') === 'true';
@@ -99,6 +100,8 @@ export class PushSwapApp {
             document.getElementById('globalInput').value = val;
         }
         document.getElementById('randomSize').value = numbers.length;
+        this.#clearLastDiff();
+        
         this.#sims.forEach(sim => { 
             sim.setInitialState(numbers); 
             sim.setIndex(-1); 
@@ -186,14 +189,14 @@ export class PushSwapApp {
 
         if (found) {
             this.#lastDiff.offA = offA; this.#lastDiff.offB = offB;
-            this.#findConvergence(offA, offB);
+            this.#findConvergence(offA, offB, true);
         } else {
             Feedback.animateButton(document.getElementById('btn-find-main'), 'No differences found!');
         }
     }
 
     #findNextConvergenceOnly() {
-        this.#findConvergence(this.#sims[0].getIndex(), this.#sims[1].getIndex());
+        this.#findConvergence(this.#sims[0].getIndex(), this.#sims[1].getIndex(), false);
     }
 
     #getConvergenceMoveList(sim) {
@@ -203,29 +206,30 @@ export class PushSwapApp {
         }
     }
 
-    #findConvergence(offA, offB) {
+    #findConvergence(offA, offB, previousEquals) {
         const [s1, s2] = this.#sims;
         const finder = new ConvergenceFinder(s1.getInitialState());
         const result = finder.findConvergence(this.#getConvergenceMoveList(s1), this.#getConvergenceMoveList(s2), offA, offB);
         let convA = result?.convA, convB = result?.convB;
-        this.#lastDiff = { offA, offB, convA, convB };
+        this.#lastDiff = { offA: offA, offB: offB, convA: convA, convB: convB, previousEquals: previousEquals };
         s1.setIndex(offA); s2.setIndex(offB);
         this.#applyHighlight();
     }
 
     #applyHighlight() {
-        const { offA, offB, convA, convB } = this.#lastDiff;
+        const { offA, offB, convA, convB, previousEquals } = this.#lastDiff;
         
         if (!convA || !convB) {
             Feedback.animateButton(document.getElementById('btn-find-main'), 'No convergence found!');
         } else {
             const lenA = convA - offA, lenB = convB - offB;
-            document.getElementById('diff-stats').innerHTML = `<span class="diff-badge">1: ${lenA}</span> <span class="diff-badge">2: ${lenB}</span>`;
-
             // Appliquer les nouvelles sélections avec les bons types
             this.#sims[0].setMovesSelection(offA, convA, this.#getHightLightClass(lenA, lenB));
             this.#sims[1].setMovesSelection(offB, convB, this.#getHightLightClass(lenB, lenA));
+            document.getElementById('diff-stats').innerHTML = `<span class="diff-badge">1: ${lenA}</span> <span class="diff-badge">2: ${lenB}</span>`;
             document.getElementById('merge-tools').style.display = 'flex';
+            document.getElementById('btn-merge-a-to-b').style.visibility = previousEquals ? 'visible' : 'hidden';
+            document.getElementById('btn-merge-b-to-a').style.visibility = previousEquals ? 'visible' : 'hidden';
         }
     }
 
@@ -265,5 +269,11 @@ export class PushSwapApp {
         updatedMoves.splice(startTo, endTo - startTo, ...newMoves);
         toSim.setMovesList(updatedMoves);
         this.#refreshGlobalUI();
+    }
+
+    #clearLastDiff() {
+        this.#sims[0].setMovesSelection(-1, -1, null);
+        this.#sims[1].setMovesSelection(-1, -1, null);
+        this.#lastDiff = PushSwapApp.#EMPTY_LAST_DIFF;
     }
 }
