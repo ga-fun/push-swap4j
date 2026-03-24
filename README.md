@@ -12,14 +12,14 @@ The most basic algorithm:
 3. In a second phase, in a loop while B stack is not empty, it searches for the cheapest element to push to A, keeping A sorted
 4. Finally, it rotates A to position the smallest element at the top
 
-#### Results:
+#### Results:
 - 100 elements: 570 operations
 - 500 elements: 5157 operations
 
 ### LisTurk
 An improved version of Turk that uses the [longest increasing subsequence](https://en.wikipedia.org/wiki/Longest_increasing_subsequence) to push elements to B (replace the 1 and 2 steps of Turk).
 
-#### Results:
+#### Results:
 - 100 elements: 534 operations
 - 500 elements: 5015 operations
 
@@ -45,6 +45,11 @@ With a 7 elements kept in A, the results are:
 ### LisButterfly
 A variant of Butterfly that pushes all the elements but the [longest increasing subsequence](https://en.wikipedia.org/wiki/Longest_increasing_subsequence) to B (replace the 1 and 2 steps of Butterfly).  
 The benefit is this LIS is usually far larger than the number of elements we can raisonnably sort in an optimal way in point 2 of the Butterfly algorithm.
+
+This implementation also includes various local optimizations to improve performance:
+- when n is the highest element of B and n-1 is at the top of A and n is not at bottom of B, we first push n-1 back to A, then n and then, we perform a sa.
+- when we are rotating B (with rb) to reach n (the element to push) and n-1 is somewhere near the bottom of B, the last rb is replaced by a sb. This replaces all "rb pa rrb" sequences by "sb pa".
+- this sorter makes its best effort to use grouped operations when possible (e.g. ss instead of sa sb).
 
 #### Results:
 - 100 elements: 463 operations
