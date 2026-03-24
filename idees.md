@@ -13,7 +13,7 @@ Par exemple si on cherche 494 avec 480 en fin de pile A, et qu'en chemin, on pas
 
 Ce n'est peut-être pas toujours une bonne idée. Un cas où ça marche très bien, c'est quand il y a un élément compris entre l'élément courant et la cible qui se trouve du côté d'où on vient.  
 Exemple : 491 ,..., 486, ..., 494
-Dans ce cas, la manip pa-ra évite de repasser sur 486 en sens inverse pour atteindre 491, une fois 494 poussé. Ca n'est pas encore obligé d'entre meilleur, mais on a des chances : 
+Dans ce cas, la manip pa-ra évite de repasser sur 486 en sens inverse pour atteindre 491, une fois 494 poussé. Ca n'est pas encore obligé d'être meilleur, mais on a des chances : 
 Avec le pa-ra : 1 pa, 1 ra, puis un rra pour le ramener en haut de pile (3 ops). 
 Sans le pa-ra : 1 rb (ou rrb) de plus pour le sauter au retour, d'autres mouvements éventuels quand l'élément devient la cible, puis un pa (>= 2 ops).
 
