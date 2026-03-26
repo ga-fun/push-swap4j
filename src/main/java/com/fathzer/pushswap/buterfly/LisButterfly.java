@@ -1,8 +1,10 @@
 package com.fathzer.pushswap.buterfly;
 
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.function.IntConsumer;
+import java.util.function.IntFunction;
 import java.util.stream.StreamSupport;
 
 import com.fathzer.pushswap.AbstractPushSwapSorter;
@@ -15,26 +17,54 @@ import com.fathzer.pushswap.pusher.AbstractPusher;
 
 public class LisButterfly extends AbstractButterfly {
     private static final boolean USE_CIRCULAR_LIS = true;
-    private LisPusher lisPusher;
+    protected final AToBLisPusherConfig config;
+    protected AToBLisPusher lisPusher;
 
     public LisButterfly(int[] numbers) {
         super(IntegerListGenerator.normalize(numbers));
+        this.config = new AToBLisPusherConfig();
+        this.config.setCircularLis(USE_CIRCULAR_LIS);
     }
 
-    private static class LisPusher extends AbstractButterFlyBPusher {
-        protected final BitSet keepInA;
-        protected final List<Integer> toBeMoved;
-        private final int windowSize;
-        private int lowIndex;
+    static class AToBLisPusherConfig {
+        private boolean circularLis;
+        private IntFunction<Integer> windowSizeBuilder;
 
-        public LisPusher(AbstractPushSwapSorter sorter) {
-            super(sorter);
-            IStack stackA = sorter.getAStack();
-            this.keepInA = USE_CIRCULAR_LIS ? LIS.getCircular(stackA.toArray()) : LIS.get(stackA.toArray(), 0);
-            this.toBeMoved = StreamSupport.stream(stackA.spliterator(), false).filter(value -> !keepInA.get(value)).sorted().toList();
+        public AToBLisPusherConfig() {
+            this.circularLis = true;
             // windowSize définit la largeur de la fenêtre glissante.
             // Coéfficients empiriques (marche bien pour 500 éléments).
-            this.windowSize = (int) (Math.sqrt((double)stackA.size()-keepInA.cardinality()) * 1.6);
+            this.windowSizeBuilder = size -> (int) (Math.sqrt(size) * 1.6);
+        }
+
+        public AToBLisPusherConfig setCircularLis(boolean circularLis) {
+            this.circularLis = circularLis;
+            return this;
+        }
+
+        public AToBLisPusherConfig setWindowSizeBuilder(IntFunction<Integer> windowSizeBuilder) {
+            this.windowSizeBuilder = windowSizeBuilder;
+            return this;
+        }
+
+        public BitSet getLis(IStack stackA) {
+            int[] array = stackA.toArray();
+            return this.circularLis ? LIS.getCircular(array) : LIS.get(array, 0);
+        }
+    }
+
+    static class AToBLisPusher extends AbstractButterFlyBPusher {
+        protected final BitSet keepInA;
+        protected final List<Integer> toBeMoved;
+        protected final int windowSize;
+        protected int lowIndex;
+
+        public AToBLisPusher(AbstractPushSwapSorter sorter, AToBLisPusherConfig config) {
+            super(sorter);
+            IStack stackA = sorter.getAStack();
+            this.keepInA = config.getLis(stackA);
+            this.toBeMoved = new ArrayList<>(StreamSupport.stream(stackA.spliterator(), false).filter(value -> !keepInA.get(value)).sorted().toList());
+            this.windowSize = config.windowSizeBuilder.apply(stackA.size() - keepInA.cardinality());
             sorter.debug("LIS ("+ keepInA.cardinality()+" elements): " + keepInA + ". Starting PushToB with "+this.windowSize+" elements window");
             this.lowIndex = 0;
             this.low = toBeMoved.get(lowIndex);
@@ -52,6 +82,10 @@ public class LisButterfly extends AbstractButterfly {
         @Override
         protected void incrementLimits() {
             lowIndex++;
+            updateLimits();
+        }
+
+        protected void updateLimits() {
             if (lowIndex < toBeMoved.size()) {
                 low = toBeMoved.get(lowIndex);
                 int highIndex = lowIndex + windowSize - 1;
@@ -73,8 +107,38 @@ public class LisButterfly extends AbstractButterfly {
 
     @Override
     protected AbstractPusher getFirstPhasePusher() {
-        this.lisPusher = new LisPusher(this);
+        this.lisPusher = new AToBLisPusher(this, this.config);
         return this.lisPusher;
+    }
+
+    @Override
+    protected void onFirstPhaseEnded() {
+        super.onFirstPhaseEnded();
+        // The A stack is not in position where the next/highest element should be inserted
+        // The challenge is to take advantage of the movements in A to push in any elements along the way. 
+        // For example, if A contains 77, 80, 97, and 5, and B contains 95, 91, 93, 99, 98, and 96, 
+        // pushing 95 between 80 and 97 adds two movements compared to the shortest possible positioning to insert 99 
+        // (ra,ra,pa,rr,rr,pa versus rr,rr,rr,pa), but the sequence to insert 95 is three movements shorter 
+        // (pa,rra,pa,rra versus pa,rra,pa,rrb,rrb,rrb,pa). Furthermore, since 94 is to the right of 95 in B, 
+        // we'll gain even more by saving the movement through 91 and 93.
+        // But it's a challenge!
+        // So, for now, we will just rotate the stacks to be able to push the first element of B into A
+        int aIndex = stackA.getHeadIndex();
+        aIndex = Rotation.getPreviousIndex(stackA, aIndex);
+        int max = stackA.size() + stackB.size() - 1;
+        while (stackA.get(aIndex) == max) {
+            max--;
+            aIndex = Rotation.getPreviousIndex(stackA, aIndex);
+        }
+        int bIndex = stackB.getIndex(max);
+        aIndex = Rotation.getNextIndex(stackA, aIndex);
+        debug("Should insert: " + max + " at index " + aIndex + " of A from index " + bIndex +" of B");
+        // Ensure first element of A is max number in lists or the smallest element of A (in this case, highest value should be inserted at A's top)
+        Rotation rotation = new Rotation();
+        rotation.cheapest(stackB, bIndex, stackA, aIndex);
+        rotate(rotation);
+        debug("Opérations phase 1: (after {} cost) {}", List.of(rotation::cost, this::getOperations));
+
     }
 
     @Override
@@ -167,41 +231,25 @@ public class LisButterfly extends AbstractButterfly {
         public LisButterflyBackPusher(AbstractPushSwapSorter sorter, BitSet inA) {
             super(sorter);
             this.inA = inA;
+            sorter.debug("inA is "+inA);
         }
         
         @Override
         public void push() {
             Stack stackA = sorter.getAStack();
             Stack stackB = sorter.getBStack();
-            // Insert highest missing element in A
-            int aIndex = stackA.getHeadIndex();
-            // Highest value of A is the one before head
-            aIndex = aIndex==0 ? stackA.size()-1 : aIndex-1;
-            int max = stackA.size() + stackB.size() - 1;
-            while (stackA.get(aIndex) == max) {
-                max--;
-                aIndex = aIndex==0 ? stackA.size()-1 : aIndex-1;
-            }
-            int bIndex = stackB.getIndex(max);
-            aIndex = aIndex==stackA.size()-1 ? 0 : aIndex+1;
-            sorter.debug("Should insert: " + max + " at index " + aIndex + " of A from index " + bIndex +" of B");
-            // Ensure first element of A is max number in lists or the smallest element of A (in this case, highest value should be inserted at A's top)
-            Rotation rotation = new Rotation();
-            rotation.cheapest(stackB, bIndex, stackA, aIndex);
-            sorter.rotate(rotation);
-            sorter.debug("Opérations phase 1: (after {} cost) {}", List.of(rotation::cost, sorter::getOperations));
             // Now push other elements on top of A
             DelayedOperations delayed = new DelayedOperations(sorter);
-            for (int target=max; target>=0; target--) {
-                sorter.debug("------------"+target+"-----------");
+            for (int target=this.inA.previousClearBit(stackA.size()+stackB.size()-1); target>=0; target--) {
+//                sorter.debug("------------"+target+"-----------");
                 if (inA.get(target)) {
-                    sorter.debug("Is in A. head is = " + delayed.headOfA()+", end is "+delayed.tailOfA()+" - rraRequired="+delayed.rraRequired);
+//                    sorter.debug("Is in A. head is = " + delayed.headOfA()+", end is "+delayed.tailOfA()+" - rraRequired="+delayed.rraRequired);
                     if (delayed.tailOfA() == target) {
                         // This value is already in A stack => move it to the top
-                        sorter.debug("max in last A position => rra");
+//                        sorter.debug("max in last A position => rra");
                         delayed.rra();
                     } else if (delayed.headOfA() == target) {
-                        sorter.debug("max in first A position: ignore");
+//                        sorter.debug("max in first A position: ignore");
                         // This value is at the top of A stack because we pushed it earlier => nothing to do
                         //TODO Warning will not work with delayed sa.
                     }
@@ -244,8 +292,7 @@ public class LisButterfly extends AbstractButterfly {
                 }
                 
                 delayed.pa(inA::set);
-
-                sorter.debugStacks();
+//                sorter.debugStacks();
             }
             delayed.processPending();
         }

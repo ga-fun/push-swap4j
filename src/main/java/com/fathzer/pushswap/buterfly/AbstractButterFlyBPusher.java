@@ -7,6 +7,7 @@ import com.fathzer.pushswap.pusher.AbstractPusher;
 public abstract class AbstractButterFlyBPusher extends AbstractPusher {
     protected int low;
     protected int high;
+    private boolean switchBTop;
 
     enum Command {
         TO_BOTTOM,
@@ -16,6 +17,11 @@ public abstract class AbstractButterFlyBPusher extends AbstractPusher {
 
     protected AbstractButterFlyBPusher(AbstractPushSwapSorter sorter) {
         super(sorter);
+        this.switchBTop = true;
+    }
+
+    public void setSwitchBTop(boolean switchBTop) {
+        this.switchBTop = switchBTop;
     }
 
     public Command evaluate(int value) {
@@ -69,7 +75,7 @@ public abstract class AbstractButterFlyBPusher extends AbstractPusher {
                 sorter.pb();
 //                debug("  -> Push to top");
                 
-                if (isHeadAscending(sorter.getBStack())) {
+                if (switchBTop && isHeadAscending(sorter.getBStack())) {
                     // I tried here to also swap A when the two elements at top of A.get(1)>A.get(0), but for an unknown reason it leads to worse results.   
                     sorter.sb();
                 }
