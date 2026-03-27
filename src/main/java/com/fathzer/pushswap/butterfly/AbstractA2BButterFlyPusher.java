@@ -1,10 +1,10 @@
-package com.fathzer.pushswap.buterfly;
+package com.fathzer.pushswap.butterfly;
 
 import com.fathzer.pushswap.AbstractPushSwapSorter;
 import com.fathzer.pushswap.IStack;
 import com.fathzer.pushswap.pusher.AbstractPusher;
 
-public abstract class AbstractButterFlyBPusher extends AbstractPusher {
+public abstract class AbstractA2BButterFlyPusher extends AbstractPusher {
     protected int low;
     protected int high;
     private boolean switchBTop;
@@ -15,7 +15,7 @@ public abstract class AbstractButterFlyBPusher extends AbstractPusher {
         KEEP
     }
 
-    protected AbstractButterFlyBPusher(AbstractPushSwapSorter sorter) {
+    protected AbstractA2BButterFlyPusher(AbstractPushSwapSorter sorter) {
         super(sorter);
         this.switchBTop = true;
     }

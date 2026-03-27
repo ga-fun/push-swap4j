@@ -1,4 +1,4 @@
-package com.fathzer.pushswap.buterfly;
+package com.fathzer.pushswap.butterfly;
 
 import java.util.List;
 import java.util.stream.IntStream;
@@ -16,7 +16,7 @@ public class Butterfly extends AbstractButterfly {
         super(IntegerListGenerator.normalize(numbers));
     }
 
-    private static class BasicBPusher extends AbstractButterFlyBPusher {
+    private static class BasicBPusher extends AbstractA2BButterFlyPusher {
         private final int keptCount;
         private final int maxPushedValue;
         

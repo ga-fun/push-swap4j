@@ -1,4 +1,4 @@
-package com.fathzer.pushswap.buterfly;
+package com.fathzer.pushswap.butterfly;
 
 import com.fathzer.pushswap.AbstractPushSwapSorter;
 import com.fathzer.pushswap.AbstractTwoPhasesPushSwapSorter;

@@ -54,3 +54,7 @@ This implementation also includes various local optimizations to improve perform
 #### Results:
 - 100 elements: 463 operations
 - 500 elements: 4350 operations
+
+## TODO
+- [ ] Improve LisButterfly performance
+- [ ] Add comments on small stack sorters and remove unused code
