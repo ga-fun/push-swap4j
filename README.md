@@ -48,12 +48,14 @@ The benefit is this LIS is usually far larger than the number of elements we can
 
 This implementation also includes various local optimizations to improve performance:
 - when n is the highest element of B and n-1 is at the top of A and n is not at bottom of B, we first push n-1 back to A, then n and then, we perform a sa.
-- when we are rotating B (with rb) to reach n (the element to push) and n-1 is somewhere near the bottom of B, the last rb is replaced by a sb. This replaces all "rb pa rrb" sequences by "sb pa".
-- this sorter makes its best effort to use grouped operations when possible (e.g. ss instead of sa sb).
+- when we are rotating B (with rb) to reach n (the element to push, let call it the `target`):
+  - if top of B is higher than the bottom of A, we make a pa/rr instead of a rb. This pushes it at the bottom of A. No extra cost is guaranteed because the rra required to put it at its right place later has a lower cost than the cost to go back to it in B (that is >= 1 rrb).
+  - if the future `target` is somewhere near the bottom of B (implying the next sequence will be a rrb one), the last rb is replaced by a sb. This replaces all "rb pa rrb" sequences by "sb pa".
+- this sorter makes its best effort to use grouped operations when possible (e.g. ss instead of sa sb). In order to achieve this goal, it uses a *delayed* operation system that accumulates operations made on A, and tries to group them with occuring operations made on B.
 
 #### Results:
-- 100 elements: 463 operations
-- 500 elements: 4350 operations
+- 100 elements: 457 operations
+- 500 elements: 4030 operations
 
 ## TODO
 - [ ] Improve LisButterfly performance

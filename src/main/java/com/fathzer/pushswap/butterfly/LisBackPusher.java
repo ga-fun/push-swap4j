@@ -3,6 +3,7 @@ package com.fathzer.pushswap.butterfly;
 import java.util.BitSet;
 
 import com.fathzer.pushswap.AbstractPushSwapSorter;
+import com.fathzer.pushswap.IStack;
 import com.fathzer.pushswap.Stack;
 import com.fathzer.pushswap.pusher.AbstractPusher;
 
@@ -60,6 +61,10 @@ class LisBackPusher extends AbstractPusher {
 
     protected void doTargetInB(Stack stackB, int target) {
         boolean saRequired = stackB.first() == target - 1 && stackB.last()!=target;
+        // if (delayed.tailOfA()==target-1) {
+        //     delayed.rra();
+        //     saRequired = true;
+        // }
         if (saRequired) {
             //FIXME should be tested for every value found on the way to target!
             // We will have to make a sa after adding max
@@ -77,27 +82,50 @@ class LisBackPusher extends AbstractPusher {
         } else if (pos <= stackB.size() / 2) {
             //TODO the test does not uses pending rra to be sure best way is rb (should be relevant only when stackB is small)
             // Faster to make rb
-            // We should be clever and check if a sb is enough for the last rb (it could save a rrb call later)
-            for (int i=0; i<pos-1; i++) {
-                delayed.rb();
-            }
-            // Check if sb is better than rb
-            int nextToBePushed = getNextValueInBToBePushed(target);
-            if (stackB.first() == nextToBePushed || stackB.getIndex(nextToBePushed)>stackB.size() / 2) {
-                // If next number of B to be pushed is the current first or at the bottom of the list, sb is better
-                delayed.sb();
-            } else {
-                delayed.rb();
-            }
+            saRequired = doRb(target) || saRequired;
         } else {
             // Faster to make rrb
-            while (stackB.get(0) != target) delayed.rrb();
+            while (stackB.first() != target) delayed.rrb();
         }
         pa();
         if (saRequired) {
             delayed.sa();
         }
 //                sorter.debugStacks();
+    }
+
+    protected boolean doRb(int target) {
+        IStack stackB = sorter.getBStack();
+        // Faster to make rb
+        // We should be clever and check if a sb is enough for the last rb (it could save a rrb call later)
+        int pos = stackB.getIndex(target);
+        boolean pushedTargetMinus1 = false;
+        for (int i=0; i<pos-1; i++) {
+            // Check if we can push B to the bottom of A
+            if (stackB.first() > delayed.tailOfA()) {
+                boolean isTargetMinus1 = stackB.first() == target - 1;
+                pa();
+                if (!isTargetMinus1) {
+                    delayed.ra();
+                } else {
+                    pushedTargetMinus1 = true;
+                }
+            } else {
+                delayed.rb();
+            }
+        }
+        if (stackB.first() == target) {
+            return pushedTargetMinus1;
+        }
+        // Check if sb is better than rb
+        int nextToBePushed = getNextValueInBToBePushed(target);
+        if (stackB.first() == nextToBePushed || stackB.getIndex(nextToBePushed)>stackB.size() / 2) {
+            // If next number of B to be pushed is the current first or at the bottom of the list, sb is better
+            delayed.sb();
+        } else {
+            delayed.rb();
+        }
+        return pushedTargetMinus1;
     }
 
     protected int getNextValueInBToBePushed(int target) {
