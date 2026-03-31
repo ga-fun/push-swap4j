@@ -120,4 +120,32 @@ public class Rotation {
     public int hashCode() {
         return Objects.hash(ra, rra, rb, rrb, rr, rrr);
     }
+
+    /**
+     * Returns the previous index of the given index in the stack.
+     * <p>
+     * If the index is 0, the previous index is the last index of the stack.
+     * Otherwise, the previous index is the index minus 1.
+     * </p>
+     * @param stack the stack
+     * @param index the index
+     * @return the previous index
+     */
+    public static int getPreviousIndex(IStack stack, int index) {
+        return index == 0 ? stack.size() - 1 : index - 1;
+    }
+
+    /**
+     * Returns the next index of the given index in the stack.
+     * <p>
+     * If the index is the last index of the stack, the next index is 0.
+     * Otherwise, the next index is the index plus 1.
+     * </p>
+     * @param stack the stack
+     * @param index the index
+     * @return the previous index
+     */
+    public static int getNextIndex(IStack stack, int index) {
+        return index == stack.size() - 1 ? 0 : index + 1;
+    }
 }

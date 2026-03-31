@@ -8,7 +8,18 @@ import java.util.List;
 import com.fathzer.pushswap.bfs.BFS;
 import com.fathzer.pushswap.bfs.Node;
 
-public class CleanKillingSmallStackSorter extends BFS<Operation, CleanKillingSmallStackSorter.State> {
+/**
+ * An optimal stack sorter that finds the shortest sequence of operations to sort small stacks.
+ * This class implements a breadth-first search algorithm to find the optimal solution
+ * for sorting stacks using push-swap operations.
+ * 
+ * <p>The algorithm works with two stacks (A and B) and supports operations like
+ * swap (SA, SB, SS), push (PA, PB), and rotate (RA, RRA). It uses BFS to explore
+ * all possible states and find the shortest path from the initial configuration
+ * to the target configuration preserving the content of B, whatever it is.</p>
+ * 
+ */
+public class SmallStackSorter extends BFS<Operation, SmallStackSorter.State> {
 
     /**
      * Represents a state in the search space containing the current configuration
@@ -209,6 +220,16 @@ public class CleanKillingSmallStackSorter extends BFS<Operation, CleanKillingSma
         }
     }
 
+    /**
+     * Finds the optimal sequence of operations to transform stack A from start configuration
+     * to target configuration using breadth-first search.
+     * 
+     * <p>This method avoids operations that would rotate stack B or mix the bottom of stack B to maintain consistency.</p>
+     * 
+     * @param start The initial configuration of stack A
+     * @param target The target sorted configuration of stack A
+     * @return A list of operations representing the optimal path, or empty list if no solution found
+     */
     public List<Operation> solve(int[] start, int[] target) {
         if (start.length!=target.length) {
             throw new IllegalArgumentException("Start and target arrays must have the same size");

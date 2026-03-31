@@ -7,33 +7,31 @@ import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
 import com.fathzer.pushswap.Checker;
-import com.fathzer.pushswap.CleanKillingSmallStackSorter;
-import com.fathzer.pushswap.KillingSmallStackSorter;
+import com.fathzer.pushswap.SmallStackSorter;
 import com.fathzer.pushswap.Operation;
-import com.fathzer.pushswap.bfs.BFS;
-import com.fathzer.pushswap.bfs.BFSLogger;
+
 
 public class SmallStackSorterTest {
 
-    private static class FuckingBugLogger extends BasicBFSLogger<Operation, CleanKillingSmallStackSorter.State> {
+    private static class FuckingBugLogger extends BasicBFSLogger<Operation, SmallStackSorter.State> {
         @Override
-        public void applyOperation(BFS<Operation, CleanKillingSmallStackSorter.State> bfs, CleanKillingSmallStackSorter.State curr, Operation op) {
+        public void applyOperation(SmallStackSorter.State curr, Operation op) {
             if (isSearchedPath(curr.path()) && SEARCHED_PATHS.get(curr.path().size()) == op) {
-                super.applyOperation(bfs, curr, op);
+                super.applyOperation(curr, op);
             }
         }
 
         @Override
-        public void nextStateBuilt(BFS<Operation, CleanKillingSmallStackSorter.State> bfs, CleanKillingSmallStackSorter.State curr, Operation op, CleanKillingSmallStackSorter.State next) {
+        public void nextStateBuilt(SmallStackSorter.State curr, Operation op, SmallStackSorter.State next) {
             if (isSearchedPath(curr.path()) && SEARCHED_PATHS.get(curr.path().size()) == op) {
-                super.nextStateBuilt(bfs, curr, op, next);
+                super.nextStateBuilt(curr, op, next);
             }
         }
 
         @Override
-        public void nodeValidated(BFS<Operation, CleanKillingSmallStackSorter.State> bfs, CleanKillingSmallStackSorter.State next, Predicate<CleanKillingSmallStackSorter.State> isTarget) {
+        public void nodeValidated(SmallStackSorter.State next, Predicate<SmallStackSorter.State> isTarget) {
             if (isSearchedPath(next.path())) {
-                super.nodeValidated(bfs, next, isTarget);
+                super.nodeValidated(next, isTarget);
             }
         }
 
@@ -50,7 +48,8 @@ public class SmallStackSorterTest {
      * @param args Command line arguments (not used)
      */
     public static void main(String[] args) {
-        CleanKillingSmallStackSorter sorter = new CleanKillingSmallStackSorter();
+        SmallStackSorter sorter = new SmallStackSorter();
+        sorter.setLogger(new BasicBFSLogger<>());
 /* 
         List<Integer> initial = List.of(0, 2, 1, 3);
         List<Integer> goal = IntStream.range(0, initial.size()).boxed().toList();
@@ -92,7 +91,7 @@ public class SmallStackSorterTest {
         System.out.println("Time: " + (end - start) + "ms");
         System.out.println("Total operations: " + total);
         System.out.println("Longest case (size=" + longest.size() + "): "+ longest + " for " + Arrays.toString(longestCase));
-        System.out.println("Explored " + sorter.nodeCount() + " nodes");
+        System.out.println("Explored " + ((BasicBFSLogger<?, ?>)sorter.getLogger()).getVisitedNodeCount() + " nodes");
     }
 
     /**

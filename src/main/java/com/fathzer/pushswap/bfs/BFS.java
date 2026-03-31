@@ -8,21 +8,26 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.function.Predicate;
 
+/**
+ * Base class for breadth-first search algorithms.
+ * @param <O> The type of operations to perform
+ * @param <N> The type of nodes in the search space
+ */
 public class BFS<O, N extends Node<O>> {
-    private int nodeCount = 0;
     private BFSLogger<O, N> logger = new BFSLogger<>(){};
 
-    public int nodeCount() {
-        return nodeCount;
+    public BFSLogger<O,N> getLogger() {
+        return logger;
     }
-
-    public void setLogger(BFSLogger logger) {
+    
+    public void setLogger(BFSLogger<O,N> logger) {
         this.logger = logger;
     }
 
     public List<O> solve(N start, Predicate<N> isTarget) {
-        logger.startSearch(this, start);
+        Objects.requireNonNull(start);
         Objects.requireNonNull(isTarget);
+        logger.startSearch(start);
 
         Queue<N> queue = new LinkedList<>();
         Map<N, Integer> visited = new HashMap<>();
@@ -30,26 +35,26 @@ public class BFS<O, N extends Node<O>> {
         queue.add(start);
         visited.put(start, 0);
 
-        // On retire tout ce qui fait tourne B ou qui mélange le fond de B
         while (!queue.isEmpty()) {
             N curr = queue.poll();
-            nodeCount++;
+            logger.enterNode(curr);
 
             if (isTarget.test(curr)) {
-                logger.targetFound(this, curr);
+                logger.targetFound(curr);
                 return curr.path();
             }
 
             Iterable<O> ops = curr.getOperations();
             for (O op : ops) {
-                logger.applyOperation(this, curr, op);
+                logger.applyOperation(curr, op);
                 N next = curr.isRejected(op) ? null : curr.next(op);
-                logger.nextStateBuilt(this, curr, op, next);
+                logger.nextStateBuilt(curr, op, next);
                 if (next != null && (!visited.containsKey(next) || visited.get(next) > next.cost())) {
+                    // Visit again the node only if its cost is lower than the previous one
                     next.validate(op);
                     visited.put(next, next.cost());
                     queue.add(next);
-                    logger.nodeValidated(this, next, isTarget);
+                    logger.nodeValidated(next, isTarget);
                 }
             }
         }

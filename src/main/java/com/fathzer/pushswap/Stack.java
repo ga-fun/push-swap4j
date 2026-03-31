@@ -163,6 +163,11 @@ public class Stack implements IStack {
         return -(actualInsertionIndex + 1);
     }
 
+    /** Gets the index of the smallest element of a sorted, but rotated stack.
+     * <br>Typically, a sorted but rotated stack is a stack that has been rotated (shifted) from its original sorted position.
+     * <br>For example, [3, 4, 5, 1, 2] is a sorted but rotated stack.
+     * @return the index of the smallest element
+     */
     public int getHeadIndex() {
         return getHeadIndex(true);
     }

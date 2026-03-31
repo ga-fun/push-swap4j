@@ -5,7 +5,9 @@ import static com.fathzer.pushswap.Operation.*;
 import java.util.LinkedList;
 import java.util.List;
 
-public abstract class AbstractPushSwapSorter implements PushSwapManager {
+import com.fathzer.pushswap.utilities.DebugContext;
+
+public abstract class AbstractPushSwapSorter implements PushSwapManager, DebugContext {
     private boolean debug = false;
 
     protected Stack stackA;
@@ -167,12 +169,19 @@ public abstract class AbstractPushSwapSorter implements PushSwapManager {
         return stackA.isSorted() && stackB.isEmpty();
     }
 
+    @Override
     public void setDebug(boolean debug) {
         this.debug = debug;
     }
 
-    protected boolean isDebug() {
+    @Override
+    public boolean isDebug() {
         return debug;
+    }
+
+    public void debugStacks() {
+        debug("Stack A: {}", List.of(() -> stackA));
+        debug("Stack B: {}", List.of(() -> stackB));
     }
 
     public abstract void sort();
