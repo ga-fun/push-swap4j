@@ -60,35 +60,36 @@ class LisBackPusher extends AbstractPusher {
     }
 
     protected void doTargetInB(Stack stackB, int target) {
-        boolean saRequired = stackB.first() == target - 1 && stackB.last()!=target;
-        // if (delayed.tailOfA()==target-1) {
-        //     delayed.rra();
-        //     saRequired = true;
-        // }
-        if (saRequired) {
-            //FIXME should be tested for every value found on the way to target!
-            // We will have to make a sa after adding max
-            pa();
-        }
-        
-        // On optimise le chemin pour ramener 'target' en haut de B
         int pos = stackB.getIndex(target);
         if (pos<0) {
             throwError("Error unable to find position of " + target + " in B");
+        } else if (pos == 0) {
+            // Target is already at the top of B, just push it
+            pa();
+            return;
+        }
+
+        // Check if it is interesting to push target - 1 before target
+        // If target is at the bottom of B, it is never cheaper to push target - 1 before target
+        boolean saRequiredAfterTargetPush = stackB.last() != target && stackB.first() == target - 1;
+        if (saRequiredAfterTargetPush) {
+            pa();
+            // Warning, pos is no more correct, refresh it
+            pos = stackB.getIndex(target);
         }
         
         if (pos==0) {
-            // Nothing to do, target is already at the top of B
+            // Nothing to do
         } else if (pos <= stackB.size() / 2) {
             //TODO the test does not uses pending rra to be sure best way is rb (should be relevant only when stackB is small)
             // Faster to make rb
-            saRequired = doRb(target) || saRequired;
+            saRequiredAfterTargetPush = doRb(target) || saRequiredAfterTargetPush;
         } else {
             // Faster to make rrb
             while (stackB.first() != target) delayed.rrb();
         }
         pa();
-        if (saRequired) {
+        if (saRequiredAfterTargetPush) {
             delayed.sa();
         }
 //                sorter.debugStacks();
@@ -99,7 +100,15 @@ class LisBackPusher extends AbstractPusher {
         // Faster to make rb
         // We should be clever and check if a sb is enough for the last rb (it could save a rrb call later)
         int pos = stackB.getIndex(target);
-        boolean pushedTargetMinus1 = false;
+        // rotate the target - 1 from the top to the bottom of A if it is there. This will make room for pushing
+        // elements to the bottom of A
+        //TODO check if it is really usefull (some elements are really candidates to be pushed to the bottom of A)
+        boolean pushedTargetMinus1 = delayed.tailOfA() == target - 1;
+        //TODO If fact it is very rarely interesting
+        pushedTargetMinus1 = false;
+        if (pushedTargetMinus1) {
+            delayed.rra();
+        }
         for (int i=0; i<pos-1; i++) {
             // Check if we can push B to the bottom of A
             if (stackB.first() > delayed.tailOfA()) {
@@ -136,6 +145,8 @@ class LisBackPusher extends AbstractPusher {
         System.out.println("stackA: " + sorter.getAStack());
         System.out.println("stackB: " + sorter.getBStack());
         System.out.println("Ope: " + sorter.getOperations());
+        System.out.println("inA: " + inA);
+        System.out.println("delayed.isSaPending(): " + delayed.isSaPending());
         throw new IllegalStateException(message);
     }
 }

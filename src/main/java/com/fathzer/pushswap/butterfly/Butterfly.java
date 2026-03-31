@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import com.fathzer.pushswap.AbstractPushSwapSorter;
-import com.fathzer.pushswap.CleanKillingSmallStackSorter;
+import com.fathzer.pushswap.SmallStackSorter;
 import com.fathzer.pushswap.IStack;
 import com.fathzer.pushswap.IntegerListGenerator;
 import com.fathzer.pushswap.Operation;
@@ -55,7 +55,7 @@ public class Butterfly extends AbstractButterfly {
     protected void onFirstPhaseEnded() {
         int[] arr = IntegerListGenerator.normalize(stackA.toArray());
         int[] target = IntStream.range(0, stackA.size()).toArray();
-        List<Operation> operations = new CleanKillingSmallStackSorter().solve(arr, target);
+        List<Operation> operations = new SmallStackSorter().solve(arr, target);
         // Appliquer les opérations
         for (Operation op : operations) {
             op.apply(this);
